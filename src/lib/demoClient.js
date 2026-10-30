@@ -21,7 +21,14 @@ const rock = {
   price: 1500, price_unit: 'per_person', per_person_price: 0, capacity: 50, daily_capacity: 80,
   viewing_price: 250, min_age: 10, advance_notice_days: 2, is_active: true,
 }
-const tables = { activities: [rock, ...camping] }
+// Viewing is its own activity since the Oct 25 interview (FR-05). It shares the rock's 80 people a day.
+const viewing = {
+  id: 'demo-view', code: 'VIEW', name: 'Viewing', type: 'viewing', area_group: null,
+  description: 'Go up to the rock area to watch your group. All ages.',
+  price: 250, price_unit: 'per_person', per_person_price: 0, capacity: 50, daily_capacity: 80,
+  viewing_price: null, min_age: null, advance_notice_days: 2, is_active: true,
+}
+const tables = { activities: [rock, viewing, ...camping] }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 

@@ -6,7 +6,7 @@
 // Column names match the backend tables (supabase/migrations/..._baseline.sql), so the swap is small.
 import { supabase } from './supabase'
 import { addDays, todayManila } from './dates'
-import { isCamping, previewPrice } from './pricing'
+import { isCamping, isRock, previewPrice } from './pricing'
 
 const wait = (ms = 250) => new Promise((r) => setTimeout(r, ms))
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Math.random().toString(16).slice(2))
@@ -28,7 +28,7 @@ export async function getActivities({ includeHidden = false } = {}) {
 // ---------- MOCK store ----------
 // Kept in localStorage so demo changes survive a refresh. "Reset demo data" on the Dashboard clears it.
 
-const KEY = 'goatcliff-admin-demo-v3'
+const KEY = 'goatcliff-admin-demo-v4'
 let memory = null
 
 function store() {
@@ -98,6 +98,9 @@ async function seed(admin) {
     [4, 'ROCK', null, 80, 6, 0, 0, 0, 0, 'down_payment', 'upcoming', 'walk_in', null],
     [6, 'ROCK', null, 27, 0, 0, 0, 0, 0, 'down_payment', 'upcoming', 'online', null],
     [11, 'ROCK', null, 41, 3, 0, 0, 0, 0, 'down_payment', 'upcoming', 'online', null],
+    [0, 'VIEW', null, 3, 0, 0, 0, 1, 0, 'down_payment', 'upcoming', 'online', null],
+    [2, 'VIEW', null, 2, 0, 1, 0, 0, 0, 'pending', 'upcoming', 'online', null],
+    [7, 'ROCK', null, 18, 0, 0, 0, 0, 0, 'down_payment', 'upcoming', 'walk_in', null],
     [12, 'LA1', 2, 6, 0, 0, 0, 2, 0, 'down_payment', 'upcoming', 'online', null],
   ]
   const now = Date.now()
@@ -105,7 +108,7 @@ async function seed(admin) {
     const a = byCode[code]
     if (!a) return
     const form = { groupSize: group, viewers, seniors, pwd, children, locals, nights: nights || 1 }
-    const price = previewPrice(a, form)
+    const price = previewPrice(a, { ...form, organizer: code === 'ROCK' && d === 7 })
     const b = {
       id: uid(), reference_number: ref(), activity_id: a.id, visit_date: addDays(today, d), nights,
       guest_name: names[i % names.length], companions_names: [], contact_number: '0917' + String(1000000 + i * 7919).slice(-7),
@@ -119,6 +122,22 @@ async function seed(admin) {
       created_by: source === 'walk_in' ? 'staff-ana' : null,
       created_at: new Date(Date.parse(addDays(today, Math.min(d, 0) - 5 + (i % 4)) + 'T0' + (8 + (i % 2)) + ':15:00+08:00')).toISOString(),
     }
+    // Demo values for the interview fields (no database columns yet)
+    const PROVINCES = ['Benguet', 'Pangasinan', 'La Union', 'Metro Manila', 'Ilocos Sur', 'Pampanga', null]
+    const ages = Object.fromEntries(AGE_GROUPS.map((g) => [g, 0]))
+    for (let k = 0; k < group; k++) ages[AGE_GROUPS[[2, 3, 2, 4, 3, 5, 1, 6, 0][(i + k) % 9]]] += 1
+    Object.assign(b, {
+      channel: source === 'online' ? 'online' : ['walk_in', 'messenger', 'phone'][i % 3],
+      organizer: code === 'ROCK' && d === 7,
+      province: PROVINCES[i % PROVINCES.length],
+      found_via: i % 6 === 5 ? null : ['TikTok', 'TikTok', 'Facebook', 'Friends or family', 'Google'][i % 5],
+      emergency_name: code === 'ROCK' ? 'Contact of ' + b.guest_name.split(' ')[0] : null,
+      emergency_contact: code === 'ROCK' ? '0918' + String(2000000 + i * 3571).slice(-7) : null,
+      age_counts: ages,
+      sex_counts: { male: Math.ceil(group / 2), female: Math.floor(group / 2) },
+      tents4: code.startsWith('CA') && i % 2 ? 1 : 0, tents2: 0,
+      id_photos: seniors + pwd + locals > 0 && source === 'online' ? seniors + pwd + locals : 0,
+    })
     s.bookings.push(b)
     const method = source === 'walk_in' ? 'cash' : 'gcash'
     if (['down_payment', 'paid'].includes(pay)) addPaymentRow(s, b, price.downPayment, 'down_payment', method, 'confirmed', i % 3 ? me : 'staff-ana')
@@ -253,12 +272,33 @@ export async function releaseUnpaid(admin, bookingId) {
 
 export async function capacityFor(admin, activity, date) {
   const s = await ready(admin)
-  const o = s.overrides.find((x) => x.activity_id === activity.id && x.override_date === date)
-  if (o?.is_closed) return { closed: true, cap: 0, booked: 0 }
-  const cap = o?.daily_capacity ?? activity.daily_capacity ?? 80
-  const booked = s.bookings.filter((b) => b.activity_id === activity.id && b.visit_date === date && b.attendance_status !== 'cancelled' && b.payment_status !== 'expired')
+  // Rock and Viewing share one daily limit (80 people, viewers included: FR-11).
+  const acts = await getActivities({ includeHidden: true })
+  const pool = isCamping(activity) ? [activity] : acts.filter((a) => !isCamping(a))
+  const main = isCamping(activity) ? activity : (pool.find(isRock) || activity)
+  const ids = pool.map((a) => a.id)
+  const ovs = s.overrides.filter((x) => ids.includes(x.activity_id) && x.override_date === date)
+  if (ovs.some((o) => o.is_closed)) return { closed: true, cap: 0, booked: 0 }
+  const cap = ovs.find((o) => o.activity_id === main.id)?.daily_capacity ?? main.daily_capacity ?? 80
+  const booked = s.bookings.filter((b) => ids.includes(b.activity_id) && b.visit_date === date && b.attendance_status !== 'cancelled' && b.payment_status !== 'expired')
     .reduce((t, b) => t + b.group_size, 0)
   return { closed: false, cap, booked }
+}
+
+// The interview fields that have no database columns yet (demo only).
+export function extraFields(form, camping) {
+  return {
+    channel: form.channel || 'walk_in',
+    organizer: !!form.organizer,
+    province: form.province?.trim() || null,
+    found_via: form.foundVia || null,
+    emergency_name: form.emergencyName?.trim() || null,
+    emergency_contact: form.emergencyContact?.replace(/[\s-]/g, '') || null,
+    age_counts: { ...form.ages },
+    sex_counts: { ...form.sexes },
+    tents4: camping ? form.tents4 || 0 : 0,
+    tents2: camping ? form.tents2 || 0 : 0,
+  }
 }
 
 export async function createWalkIn(admin, { activity, visit_date, nights, form, paidNow, method, capacity_override, consent_given_at }) {
@@ -282,8 +322,11 @@ export async function createWalkIn(admin, { activity, visit_date, nights, form, 
   const b = {
     id: uid(), reference_number: ref(), activity_id: activity.id, visit_date, nights: camping ? nights : null,
     guest_name: form.name.trim(), companions_names: [], contact_number: form.contact.replace(/[\s-]/g, ''), email: form.email.trim() || 'walk-in@goatcliff.ph',
-    group_size: form.groupSize, viewing_count: camping ? 0 : form.viewers, senior_count: form.seniors, pwd_count: form.pwd,
-    child_count: camping ? form.children : 0, local_count: form.locals,
+    group_size: form.groupSize, viewing_count: activity.type === 'rock_activity' ? form.viewers : 0, senior_count: form.seniors, pwd_count: form.pwd,
+    child_count: form.children, local_count: form.locals,
+    // New interview fields (FR-15, FR-18, FR-20, FR-33). DEMO ONLY: the database has no columns for these yet,
+    // so when connecting, leave them out of the insert until the backend adds them.
+    ...extraFields(form, camping),
     total_amount: price.total, amount_due: price.downPayment, amount_paid: 0, payment_status: 'pending', attendance_status: 'upcoming',
     source: 'walk_in', assigned_field_staff_id: null, capacity_override: !!capacity_override, hold_expires_at: null, created_at: new Date().toISOString(),
     consent_given_at, created_by: admin.id, // in the database a trigger fills created_by (C13)
@@ -309,19 +352,26 @@ export const REASONS = {
   other: 'Other',
 }
 
-export async function processCancellation(admin, bookingId, { action, reason_category, reason_details, new_visit_date, refund_amount }) {
+export async function processCancellation(admin, bookingId, { action, reason_category, reason_details, new_visit_date, refund_amount, refund_method }) {
   const s = await ready(admin); await wait(400)
   const b = s.bookings.find((x) => x.id === bookingId)
   if (!b) throw new Error('Booking not found')
+  // FR-26: until Dec 31 of the visit's year, no-shows included, at least 2 days before the visit.
+  const today = todayManila()
+  if (b.visit_date >= today && b.visit_date < addDays(today, 2)) throw new Error('Changes must be made at least 2 days before the visit.')
+  if (today > b.visit_date.slice(0, 4) + '-12-31') throw new Error(`Changes for ${b.visit_date.slice(0, 4)} visits closed on Dec 31.`)
   if (action === 'reschedule') {
     if (!new_visit_date) throw new Error('Pick the new date.')
-    if (new_visit_date > addDays(b.visit_date, 183)) throw new Error('Reschedules must be within 6 months of the original date.')
+    if (new_visit_date > b.visit_date.slice(0, 4) + '-12-31') throw new Error(`The new date must be on or before Dec 31, ${b.visit_date.slice(0, 4)}.`)
+    if (new_visit_date < addDays(today, 2)) throw new Error('The new date must be at least 2 days from today.')
   }
   if (action === 'refund' && !(refund_amount > 0)) throw new Error('Enter the refund amount.')
   s.cancellations.push({
     id: uid(), booking_id: b.id, action, reason_category, reason_details: reason_details?.trim() || null,
     original_visit_date: b.visit_date, new_visit_date: action === 'reschedule' ? new_visit_date : null,
-    refund_amount: action === 'refund' ? refund_amount : null, refund_status: action === 'refund' ? 'pending' : 'not_applicable',
+    refund_amount: action === 'refund' ? refund_amount : null,
+    refund_method: action === 'refund' ? refund_method || null : null, // FR-36 (demo only: no column yet)
+    refund_status: action === 'refund' ? 'pending' : 'not_applicable',
     processed_by: admin.id, guest_notified_at: null, created_at: new Date().toISOString(),
   })
   if (action === 'reschedule') { b.visit_date = new_visit_date; b.attendance_status = 'upcoming' }
@@ -411,7 +461,8 @@ export async function createActivity(admin, f) {
   if (!(Number(f.price) >= 0) || f.price === '') throw new Error('Enter the price.')
   const camping = f.type === 'camping'
   const row = {
-    id: uid(), code, name: f.name.trim(), type: f.type, area_group: camping ? f.area_group.trim() || null : null,
+    id: uid(), code, name: f.name.trim(), type: f.type, area_group: camping ? f.category?.trim() || f.area_group?.trim() || null : null,
+    category: camping ? f.category?.trim() || null : null, image_url: f.image_url || null, // FR-07, FR-08: demo only, no columns yet
     description: f.description.trim() || null, price: Number(f.price), price_unit: camping ? 'per_night' : 'per_person',
     per_person_price: camping ? Number(f.per_person_price || 0) : 0, viewing_price: camping || f.viewing_price === '' ? null : Number(f.viewing_price),
     min_age: camping || f.min_age === '' ? null : Number(f.min_age), capacity: null,
@@ -476,7 +527,7 @@ export async function dashboardSummary(admin) {
   const all = await listBookings(admin)
   const live = all.filter((b) => b.attendance_status !== 'cancelled' && b.payment_status !== 'expired')
   const todays = live.filter((b) => b.visit_date <= today && lastDay(b) >= today)
-  const rock = (await getActivities()).find((a) => !isCamping(a))
+  const rock = (await getActivities()).find(isRock)
   const rockCap = rock ? await capacityFor(admin, rock, today) : null
   return {
     today,
@@ -500,27 +551,40 @@ export async function dashboardSummary(admin) {
   }
 }
 
-export async function analytics(admin, { from, to }) {
+export const AGE_GROUPS = ['0–7', '8–17', '18–24', '25–34', '35–44', '45–59', '60+']
+export const FOUND_VIA = ['TikTok', 'Facebook', 'Friends or family', 'Google', 'Other']
+
+// Monthly report (FR-29). `month` is 'YYYY-MM'. Sex, age group, province and found-via are demo data until
+// the backend has those columns.
+export async function analytics(admin, { month }) {
+  const [y, m] = month.split('-').map(Number)
+  const from = `${month}-01`
+  const to = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
   const rows = (await listBookings(admin, { from, to })).filter((b) => b.payment_status !== 'expired')
   const counted = rows.filter((b) => b.attendance_status !== 'cancelled')
-  const byActivity = {}
-  for (const b of counted) {
-    const key = b.activity ? (isCamping(b.activity) ? b.activity.code : b.activity.name) : 'Unknown'
-    byActivity[key] = (byActivity[key] || 0) + 1
+  const tally = (pick) => {
+    const out = {}
+    for (const b of counted) for (const [k, n] of pick(b)) if (k != null && n) out[k] = (out[k] || 0) + n
+    return out
   }
-  const byWeekday = [0, 0, 0, 0, 0, 0, 0]
-  for (const b of counted) byWeekday[new Date(b.visit_date + 'T00:00:00Z').getUTCDay()] += b.group_size
-  const people = counted.reduce((t, b) => t + b.group_size, 0)
-  const sum = (k) => counted.reduce((t, b) => t + (b[k] || 0), 0)
+  const byDay = {}
+  for (let d = from; d <= to; d = addDays(d, 1)) byDay[d] = 0
+  for (const b of counted) byDay[b.visit_date] += 1
+  const visited = counted.filter((b) => b.visit_date < todayManila() && b.attendance_status !== 'upcoming')
+  const failed = visited.filter((b) => b.attendance_status === 'failed_to_show').length
   return {
+    from, to,
     bookings: counted.length,
-    people,
-    revenue: counted.reduce((t, b) => t + Number(b.amount_paid), 0),
+    people: counted.reduce((t, b) => t + b.group_size, 0),
+    income: counted.reduce((t, b) => t + Number(b.amount_paid), 0),
     cancelled: rows.length - counted.length,
-    noShows: counted.filter((b) => b.attendance_status === 'failed_to_show').length,
-    walkIns: counted.filter((b) => b.source === 'walk_in').length,
-    byActivity: Object.entries(byActivity).sort((a, b) => b[1] - a[1]),
-    byWeekday,
-    groups: { seniors: sum('senior_count'), pwd: sum('pwd_count'), children: sum('child_count'), locals: sum('local_count'), viewers: sum('viewing_count') },
+    failedRate: visited.length ? Math.round((failed / visited.length) * 100) : null,
+    failed, visited: visited.length,
+    byDay: Object.entries(byDay),
+    byActivity: Object.entries(tally((b) => [[b.activity ? (isCamping(b.activity) ? `Camping ${b.activity.code}` : b.activity.name) : 'Unknown', 1]])).sort((a, b) => b[1] - a[1]),
+    bySex: Object.entries(tally((b) => [['Male', b.sex_counts?.male || 0], ['Female', b.sex_counts?.female || 0]])),
+    byAge: AGE_GROUPS.map((g) => [g, tally((b) => [[g, b.age_counts?.[g] || 0]])[g] || 0]),
+    byProvince: Object.entries(tally((b) => [[b.province || 'Not given', b.group_size]])).sort((a, b) => b[1] - a[1]),
+    byFoundVia: Object.entries(tally((b) => [[b.found_via || 'Not given', 1]])).sort((a, b) => b[1] - a[1]),
   }
 }

@@ -4,7 +4,7 @@ import {
   getBooking, recordPayment, setAttendance, processCancellation, lastDay, REASONS,
 } from '../lib/adminApi'
 import { addDays, formatDate, peso, todayManila } from '../lib/dates'
-import { isCamping } from '../lib/pricing'
+import { isCamping, isRock, TENTS } from '../lib/pricing'
 import { friendlyError } from '../lib/errors'
 import { Loading, ErrorState, Empty, Badge, PAYMENT, ATTENDANCE, PAYMENT_ROW, METHODS, activityLabel, useLoad } from '../components/ui'
 
@@ -18,6 +18,11 @@ export default function BookingDetail({ admin }) {
   if (!b) return <Empty text="This booking doesn't exist. It may have been removed." />
 
   const camping = isCamping(b.activity || {})
+  const rock = isRock(b.activity || {})
+  const CHANNEL = { online: 'Online', walk_in: 'Walk-in', messenger: 'Messenger', phone: 'Phone' }
+  const channel = b.source === 'online' ? 'online' : (b.channel || 'walk_in')
+  const ages = Object.entries(b.age_counts || {}).filter(([, n]) => n).map(([g, n]) => `${n} × ${g}`).join(', ')
+  const tents = Object.entries(TENTS).filter(([k]) => b[k] > 0).map(([k, t]) => `${b[k]} × ${t.label.toLowerCase()}`).join(', ')
   const balance = Math.max(0, Math.round((b.total_amount - b.amount_paid) * 100) / 100)
   const closed = b.attendance_status === 'cancelled' || ['refunded', 'expired'].includes(b.payment_status)
 
@@ -27,7 +32,7 @@ export default function BookingDetail({ admin }) {
       <div className="page-header">
         <div>
           <h1>{b.guest_name}</h1>
-          <p className="muted"><span className="mono">{b.reference_number}</span> · {b.source === 'walk_in' ? 'Walk-in' : 'Online'} booking</p>
+          <p className="muted"><span className="mono">{b.reference_number}</span> · {CHANNEL[channel]} booking{b.organizer ? ' · Organizer' : ''}</p>
         </div>
         <div className="row-badges">
           <Badge map={PAYMENT} value={b.payment_status} />
@@ -40,13 +45,18 @@ export default function BookingDetail({ admin }) {
           <h2>Visit</h2>
           <dl className="facts">
             <dt>Activity</dt><dd>{activityLabel(b.activity)}</dd>
-            <dt>{camping ? 'Check-in' : 'Date'}</dt><dd>{formatDate(b.visit_date)}{camping ? ', 1:00 PM' : ''}</dd>
+            <dt>{camping ? 'Check-in' : 'Date'}</dt><dd>{formatDate(b.visit_date)}{camping ? ', 1:00–6:00 PM' : ''}</dd>
             {camping && <><dt>Check-out</dt><dd>{formatDate(addDays(b.visit_date, b.nights))}, 12:00 noon ({b.nights} night{b.nights > 1 ? 's' : ''})</dd></>}
             <dt>Group</dt><dd>{b.group_size} {b.group_size > 1 ? 'people' : 'person'}{b.viewing_count ? `, ${b.viewing_count} viewing only` : ''}</dd>
             <dt>Discounts</dt>
             <dd>{[['senior', b.senior_count], ['PWD', b.pwd_count], ['child 7 and below', b.child_count], ['Atok local', b.local_count]]
               .filter(([, n]) => n).map(([l, n]) => `${n} ${l}`).join(', ') || 'None'}</dd>
-            {b.capacity_override && <><dt>Note</dt><dd>Accepted beyond the daily cap</dd></>}
+            {b.organizer && <><dt>Organizer</dt><dd>20% off the whole group</dd></>}
+            {ages && <><dt>Ages</dt><dd>{ages}</dd></>}
+            {b.sex_counts && <><dt>Sex</dt><dd>{b.sex_counts.male || 0} male, {b.sex_counts.female || 0} female</dd></>}
+            {tents && <><dt>Tents</dt><dd>{tents}</dd></>}
+            {b.id_photos?.length > 0 && <><dt>ID photos</dt><dd>{b.id_photos.length} uploaded</dd></>}
+            {b.capacity_override && <><dt>Note</dt><dd>Accepted beyond the daily limit</dd></>}
           </dl>
         </section>
 
@@ -57,6 +67,9 @@ export default function BookingDetail({ admin }) {
             <dt>Mobile</dt><dd className="mono">{b.contact_number}</dd>
             <dt>Email</dt><dd className="break">{b.email}</dd>
             {b.companions_names?.length > 0 && <><dt>Companions</dt><dd>{b.companions_names.join(', ')}</dd></>}
+            {b.province && <><dt>Province</dt><dd>{b.province}</dd></>}
+            {b.found_via && <><dt>Found via</dt><dd>{b.found_via}</dd></>}
+            {rock && <><dt>Emergency</dt><dd>{b.emergency_name ? <>{b.emergency_name} · <span className="mono">{b.emergency_contact}</span></> : '—'}</dd></>}
             <dt>Booked</dt><dd>{new Date(b.created_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}</dd>
             <dt>Entered by</dt><dd>{b.source === 'walk_in' ? (b.created_by_name || 'Staff') : 'Guest (online)'}</dd>
             <dt>Consent</dt><dd>{b.consent_given_at ? `Agreed ${new Date(b.consent_given_at).toLocaleDateString('en-PH', { dateStyle: 'medium' })}` : '—'}</dd>
@@ -88,7 +101,7 @@ export default function BookingDetail({ admin }) {
             {b.cancellations.map((c) => (
               <li key={c.id} className="row-static">
                 <span className="row-main">
-                  <strong>{c.action === 'reschedule' ? `Rescheduled from ${formatDate(c.original_visit_date)} to ${formatDate(c.new_visit_date)}` : c.action === 'refund' ? `Refund ${peso(c.refund_amount)}` : 'Cancelled'}</strong>
+                  <strong>{c.action === 'reschedule' ? `Rescheduled from ${formatDate(c.original_visit_date)} to ${formatDate(c.new_visit_date)}` : c.action === 'refund' ? `Refund ${peso(c.refund_amount)}${c.refund_method ? ` by ${c.refund_method}` : ''}` : 'Cancelled'}</strong>
                   <span className="muted">{REASONS[c.reason_category]}{c.reason_details ? ` · ${c.reason_details}` : ''} · by {c.processed_by_name}</span>
                 </span>
               </li>
@@ -244,8 +257,8 @@ function ChangeBooking({ admin, booking, onDone }) {
     setError(''); setSaving(true)
     try {
       await processCancellation(admin, booking.id, {
-        action, reason_category: reason, reason_details: action === 'refund' ? [`Refund by ${refundBy}`, details].filter(Boolean).join('. ') : details,
-        new_visit_date: newDate, refund_amount: Number(refund),
+        action, reason_category: reason, reason_details: details,
+        new_visit_date: newDate, refund_amount: Number(refund), refund_method: action === 'refund' ? refundBy : null,
       })
       setAction(''); onDone()
     } catch (err) { setError(friendlyError(err)) } finally { setSaving(false) }
@@ -254,6 +267,7 @@ function ChangeBooking({ admin, booking, onDone }) {
   return (
     <section className="card">
       <h2>Reschedule, refund or cancel</h2>
+      <p className="hint">At least 2 days before the visit, until Dec 31, {booking.visit_date.slice(0, 4)}.</p>
       {!action && (
         <div className="actions-row wrap">
           <button className="btn-quiet" onClick={() => start('reschedule')}>Reschedule</button>
@@ -273,7 +287,7 @@ function ChangeBooking({ admin, booking, onDone }) {
             </label>
             {action === 'reschedule' && (
               <label>New date
-                <input id="change-date" type="date" value={newDate} min={todayManila()} max={maxDate} onChange={(e) => setNewDate(e.target.value)} required />
+                <input id="change-date" type="date" value={newDate} min={addDays(todayManila(), 2)} max={maxDate} onChange={(e) => setNewDate(e.target.value)} required />
               </label>
             )}
             {action === 'refund' && (

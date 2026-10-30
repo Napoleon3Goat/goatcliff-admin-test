@@ -7,7 +7,7 @@
 web
 
 ## Users
-- **Guests:** local and out-of-town visitors (barkada groups, families, school and company "organizers") booking a camping area or the Rock Activities Package at Goatcliff Adventure and Camping, La Trinidad, Benguet. They arrive from Goatcliff's Facebook page, mostly on phones, and pay a down payment by GCash.
+- **Guests:** local and out-of-town visitors (barkada groups, families, school and company "organizers") booking a camping area or the Rock Activities Package at Goatcliff Adventure and Camping, Tagongtongao, Paoay, Atok, Benguet. They arrive from Goatcliff's Facebook page, mostly on phones, and pay a down payment by GCash.
 - **Super Admin (2, owners):** everything, including prices, activities, staff accounts and analytics. Reads requests at night.
 - **Staff Admin (3, front desk):** enters walk-ins and Messenger/phone bookings, checks GCash references, handles cancellations, reschedules and refunds, closes days. Uses a laptop on site and a phone.
 - **Field Staff (4 weekday guides + 6 weekend student helpers):** rotate by station (warm-up/gear, via ferrata, Burmese bridge, rappelling); see all of today's groups and mark them Done or Failed to show, on phones.
