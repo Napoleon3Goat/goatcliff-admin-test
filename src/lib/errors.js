@@ -2,7 +2,7 @@
 // The codes come from the backend (see "Errors to handle" in the handoff doc).
 const MESSAGES = [
   ['no_double_booking_camping', 'This camping area is already booked on one of those nights. Pick other dates or another area.'],
-  ['DAY_FULL', 'The rock is full that day. For a walk-in, tick "Accept beyond the cap" if it is safe to let them in.'],
+  ['DAY_FULL', 'The rock is full that day (viewers included). Tick "Accept beyond the daily limit" if it is safe to let them in.'],
   ['DATE_CLOSED', 'Goatcliff is closed on one of those dates.'],
   ['check constraint', 'Some of the numbers in your form don\'t add up. Please check the group size and discount counts.'],
 ]

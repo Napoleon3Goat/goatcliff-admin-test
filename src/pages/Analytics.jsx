@@ -1,30 +1,30 @@
 import { useState } from 'react'
 import { analytics } from '../lib/adminApi'
-import { addDays, pesoShort, todayManila } from '../lib/dates'
+import { pesoShort, todayManila } from '../lib/dates'
 import { Loading, ErrorState, PageHeader, useLoad } from '../components/ui'
 
-const RANGES = {
-  30: 'Last 30 days',
-  90: 'Last 90 days',
-  365: 'Last 12 months',
+// The last 12 months, newest first, as 'YYYY-MM'
+function months() {
+  const [y, m] = todayManila().split('-').map(Number)
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - 1 - i, 1))
+    return d.toISOString().slice(0, 7)
+  })
 }
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const monthName = (ym) => new Date(ym + '-01T00:00:00Z').toLocaleDateString('en-PH', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
-// Simple insights from booking data (TBI feedback #1): what's busy, and who the guests are.
-// Counts exclude cancelled and expired bookings.
+// Monthly report (FR-29). Counts leave out cancelled and expired bookings.
+// The data fields for sex, age, province and "found via" are demo-only until the backend adds them.
 export default function Analytics({ admin }) {
-  const [days, setDays] = useState('90')
-  const { data, error, loading, reload } = useLoad(
-    () => analytics(admin, { from: addDays(todayManila(), -Number(days)), to: addDays(todayManila(), 30) }),
-    [days],
-  )
+  const options = months()
+  const [month, setMonth] = useState(options[0])
+  const { data, error, loading, reload } = useLoad(() => analytics(admin, { month }), [month])
 
   return (
     <div>
       <PageHeader title="Reports">
-        <button className="btn-quiet" disabled={!data} onClick={() => downloadCsv(data, RANGES[days])}>Download report (CSV)</button>
-        <select id="analytics-range" value={days} onChange={(e) => setDays(e.target.value)} aria-label="Period">
-          {Object.entries(RANGES).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+        <select id="analytics-month" value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month">
+          {options.map((m) => <option key={m} value={m}>{monthName(m)}</option>)}
         </select>
       </PageHeader>
       {error && <ErrorState message={error} onRetry={reload} />}
@@ -32,67 +32,76 @@ export default function Analytics({ admin }) {
       {data && (
         <>
           <dl className="figures">
-            <div><dt>Bookings</dt><dd>{data.bookings}</dd><span>{data.walkIns} walk-in</span></div>
-            <div><dt>Guests</dt><dd>{data.people}</dd><span>{data.groups.viewers} viewing only</span></div>
-            <div><dt>Received</dt><dd>{pesoShort(data.revenue)}</dd><span>all payments</span></div>
-            <div><dt>Cancelled / no-show</dt><dd>{data.cancelled} / {data.noShows}</dd><span>bookings</span></div>
+            <div><dt>Bookings</dt><dd>{data.bookings}</dd><span>{data.cancelled} cancelled</span></div>
+            <div><dt>Guests</dt><dd>{data.people}</dd><span>people</span></div>
+            <div><dt>Income</dt><dd>{pesoShort(data.income)}</dd><span>payments received</span></div>
+            <div><dt>Failed to show</dt><dd>{data.failedRate == null ? '—' : `${data.failedRate}%`}</dd><span>{data.failed} of {data.visited} past bookings</span></div>
           </dl>
+
+          <section className="panel">
+            <h2>Bookings per day</h2>
+            <DayBars rows={data.byDay} />
+          </section>
 
           <div className="grid-2 align-start">
             <section className="panel">
               <h2>Bookings per activity</h2>
-              <Bars rows={data.byActivity} unit="booking" />
+              <Bars rows={data.byActivity} />
             </section>
             <section className="panel">
-              <h2>Busiest days of the week</h2>
-              <Bars rows={WEEKDAYS.map((d, i) => [d, data.byWeekday[i]])} unit="guest" keepOrder />
+              <h2>How they found Goatcliff</h2>
+              <Bars rows={data.byFoundVia} />
+            </section>
+            <section className="panel">
+              <h2>Age group</h2>
+              <Bars rows={data.byAge} keepOrder of={data.people} />
+            </section>
+            <section className="panel">
+              <h2>Sex</h2>
+              <Bars rows={data.bySex} keepOrder of={data.people} />
+            </section>
+            <section className="panel">
+              <h2>Province</h2>
+              <Bars rows={data.byProvince} of={data.people} />
             </section>
           </div>
-
-          <section className="panel">
-            <h2>Who our guests are</h2>
-            <Bars rows={[
-              ['Senior citizens', data.groups.seniors], ['PWDs', data.groups.pwd],
-              ['Children 7 and below', data.groups.children], ['Atok locals', data.groups.locals],
-            ]} unit="guest" keepOrder of={data.people} />
-          </section>
         </>
       )}
     </div>
   )
 }
 
+// One column per day of the month
+function DayBars({ rows }) {
+  const max = Math.max(1, ...rows.map(([, v]) => v))
+  if (rows.every(([, v]) => !v)) return <p className="muted">No bookings this month.</p>
+  return (
+    <div className="day-bars" role="list">
+      {rows.map(([date, v]) => (
+        <div key={date} role="listitem" className="day-bar" title={`${date}: ${v} booking${v === 1 ? '' : 's'}`}>
+          <span className="day-bar-value">{v || ''}</span>
+          <span className="day-bar-fill" style={{ height: (v / max) * 100 + '%' }} />
+          <span className="day-bar-label">{Number(date.slice(8))}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // One-colour horizontal bars, labelled with their values.
-function Bars({ rows, unit, keepOrder, of }) {
+function Bars({ rows, keepOrder, of }) {
   const list = keepOrder ? rows : rows.slice(0, 10)
   const max = Math.max(1, ...list.map(([, v]) => v))
-  if (list.every(([, v]) => !v)) return <p className="muted">No bookings in this period.</p>
+  if (list.every(([, v]) => !v)) return <p className="muted">No data this month.</p>
   return (
     <ul className="bars">
       {list.map(([label, v]) => (
-        <li key={label} title={`${label}: ${v} ${unit}${v === 1 ? '' : 's'}`}>
+        <li key={label} title={`${label}: ${v}`}>
           <span className="bar-label" title={label}>{label}</span>
           <span className="bar-track"><span className="bar-fill" style={{ width: (v / max) * 100 + '%' }} /></span>
-          <span className="bar-value">{of ? `${v} · ${of ? Math.round((v / of) * 100) : 0}%` : v}</span>
+          <span className="bar-value">{of ? `${v} · ${Math.round((v / of) * 100)}%` : v}</span>
         </li>
       ))}
     </ul>
   )
-}
-
-// Saves this period's numbers as a spreadsheet file (opens in Excel or Google Sheets).
-function downloadCsv(data, period) {
-  const rows = [
-    ['Goatcliff report', period], [],
-    ['Bookings', data.bookings], ['Walk-ins', data.walkIns], ['Guests', data.people], ['Viewing only', data.groups.viewers],
-    ['Payments received (PHP)', data.revenue], ['Cancelled', data.cancelled], ['No-shows', data.noShows], [],
-    ['Seniors', data.groups.seniors], ['PWDs', data.groups.pwd], ['Children 7 and below', data.groups.children], ['Atok locals', data.groups.locals], [],
-    ['Activity', 'Bookings'], ...data.byActivity,
-  ]
-  const csv = rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-  a.download = `goatcliff-report-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(a.href)
 }

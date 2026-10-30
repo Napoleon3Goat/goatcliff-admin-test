@@ -11,7 +11,7 @@ export const MENU = [
   { path: '/date-controls', label: 'Calendar & closures', roles: ['super_admin', 'staff_admin'], group: 'manage' },
   { path: '/activities',    label: 'Areas & prices',      roles: ['super_admin', 'staff_admin'], group: 'manage' },
   { path: '/staff',         label: 'Staff',               roles: ['super_admin'], group: 'manage' },
-  { path: '/analytics',     label: 'Reports',             roles: ['super_admin'], group: 'manage' },
+  { path: '/analytics',     label: 'Reports',             roles: ['super_admin', 'staff_admin'], group: 'manage' },
   { path: '/my-groups',     label: "Today's groups",      roles: ['field_staff'] },
 ]
 
