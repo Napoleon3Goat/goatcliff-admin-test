@@ -40,6 +40,7 @@ function needsWork(c) {
 
 function Row({ admin, c, onDone }) {
   const [error, setError] = useState('')
+  const [method, setMethod] = useState(c.refund_method || '') // how the refund was sent
   const [label, cls] = ACTIONS[c.action]
   async function run(fn) {
     setError('')
@@ -63,7 +64,13 @@ function Row({ admin, c, onDone }) {
       </dl>
       <div className="actions-row wrap">
         {c.action === 'refund' && c.refund_status === 'pending' && (
-          <button className="btn-quiet small" onClick={() => run(() => markRefundProcessed(admin, c.id))}>Mark refund as sent</button>
+          <span className="refund-sent">
+            <select id={`refund-method-${c.id}`} value={method} onChange={(e) => setMethod(e.target.value)} aria-label="Refund sent by">
+              <option value="">Sent by…</option>
+              {Object.entries(REFUND_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+            </select>
+            <button className="btn-quiet small" disabled={!method} onClick={() => run(() => markRefundProcessed(admin, c.id, method))}>Mark refund as sent</button>
+          </span>
         )}
         {!c.guest_notified_at && (
           <button className="btn-quiet small" onClick={() => run(() => markGuestNotified(admin, c.id))}>Mark guest as told</button>

@@ -11,6 +11,7 @@ const MESSAGES = [
   ['reschedule_by_year_end', 'The new date must be on or before Dec 31 of the visit\'s year.'],
   ['NOT_STAFF', 'Only staff can mark attendance.'],
   ['row-level security', 'Your role isn\'t allowed to do this.'],
+  ['processed_refund_needs_method', 'Choose how the refund was sent.'],
   ['check constraint', 'Some of the numbers in your form don\'t add up. Please check the group size and discount counts.'],
 ]
 

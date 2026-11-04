@@ -309,8 +309,10 @@ export async function listCancellations(admin) {
   return rows.map((c) => ({ ...c, booking: c.booking || {}, activity: acts[c.booking?.activity_id], processed_by_name: nameOf(names, c.processed_by) }))
 }
 
-export async function markRefundProcessed(admin, cancellationId) {
-  must(await supabase.from('cancellations').update({ refund_status: 'processed' }).eq('id', cancellationId))
+// The database refuses a processed refund without a method (processed_refund_needs_method).
+export async function markRefundProcessed(admin, cancellationId, refund_method) {
+  if (!refund_method) throw new Error('Choose how the refund was sent.')
+  must(await supabase.from('cancellations').update({ refund_status: 'processed', refund_method }).eq('id', cancellationId))
 }
 
 export async function markGuestNotified(admin, cancellationId) {
