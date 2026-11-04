@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { supabase } from './lib/supabase'
+import { supabase, isConnected } from './lib/supabase'
 import { menuFor } from './lib/menu'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -31,6 +31,23 @@ const PAGES = {
 }
 
 export default function App() {
+  if (!isConnected) return <NotConnected />
+  return <ConnectedApp />
+}
+
+// Shown on Vercel until the Supabase settings are added (see README).
+function NotConnected() {
+  return (
+    <div className="center-screen">
+      <div className="card">
+        <h1>Not connected yet</h1>
+        <p className="muted">The admin site is online but not linked to the database. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in Vercel, then redeploy.</p>
+      </div>
+    </div>
+  )
+}
+
+function ConnectedApp() {
   // session = who is logged in (null = nobody). undefined = still checking.
   const [session, setSession] = useState(undefined)
   // admin = this person's row in admin_accounts (name, role, is_active).

@@ -216,8 +216,8 @@ function CategoryList({ categories }) {
   return <datalist id="category-list">{all.map((c) => <option key={c} value={c} />)}</datalist>
 }
 
-// Photo shown on the guest site (FR-07). Demo: the picture is shrunk and kept in this browser.
-// Later it is uploaded to Supabase Storage and image_url holds its link.
+// Photo shown on the guest site (FR-07). It is shrunk here, then uploaded to the
+// activity-photos bucket when the form is saved; image_url holds its link.
 function PhotoInput({ id, value, onChange }) {
   const [error, setError] = useState('')
   function pick(e) {

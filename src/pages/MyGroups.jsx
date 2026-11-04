@@ -39,6 +39,7 @@ export default function MyGroups({ admin }) {
                   {g.viewing_count ? ` · ${g.viewing_count} viewing only` : ''}
                   {g.senior_count ? ` · ${g.senior_count} senior` : ''}{g.pwd_count ? ` · ${g.pwd_count} PWD` : ''}{g.child_count ? ` · ${g.child_count} child` : ''}
                 </span>
+                {g.emergency_contact_name && <span className="muted">Emergency: {g.emergency_contact_name} · {g.emergency_contact_number}</span>}
                 {g.attendance_status !== 'upcoming' && <Badge map={ATTENDANCE} value={g.attendance_status} />}
               </span>
               <a className="btn-call" href={`tel:${g.contact_number}`} aria-label={`Call ${g.guest_name}, ${g.contact_number}`}>Call</a>

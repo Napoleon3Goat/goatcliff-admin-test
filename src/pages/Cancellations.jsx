@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { listCancellations, markRefundProcessed, markGuestNotified, REASONS } from '../lib/adminApi'
+import { listCancellations, markRefundProcessed, markGuestNotified, REASONS, REFUND_METHODS } from '../lib/adminApi'
 import { formatDate, peso } from '../lib/dates'
 import { friendlyError } from '../lib/errors'
 import { Loading, ErrorState, Empty, PageHeader, activityLabel, useLoad } from '../components/ui'

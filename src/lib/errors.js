@@ -4,6 +4,13 @@ const MESSAGES = [
   ['no_double_booking_camping', 'This camping area is already booked on one of those nights. Pick other dates or another area.'],
   ['DAY_FULL', 'The rock is full that day (viewers included). Tick "Accept beyond the daily limit" if it is safe to let them in.'],
   ['DATE_CLOSED', 'Goatcliff is closed on one of those dates.'],
+  ['TENTS_FULL', 'Not enough tents left on one of those nights. Rent fewer tents or pick other dates.'],
+  ['LAST_SUPER_ADMIN', 'There must always be at least one active Super Admin. Add or activate another Super Admin first.'],
+  ['ages_match_group', 'The age groups must add up to the group size.'],
+  ['sexes_match_group', 'Male and female must add up to the group size.'],
+  ['reschedule_by_year_end', 'The new date must be on or before Dec 31 of the visit\'s year.'],
+  ['NOT_STAFF', 'Only staff can mark attendance.'],
+  ['row-level security', 'Your role isn\'t allowed to do this.'],
   ['check constraint', 'Some of the numbers in your form don\'t add up. Please check the group size and discount counts.'],
 ]
 

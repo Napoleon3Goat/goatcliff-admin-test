@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom'
-import { dashboardSummary, resetDemoData } from '../lib/adminApi'
+import { dashboardSummary } from '../lib/adminApi'
 import { pesoShort } from '../lib/dates'
 import { isCamping } from '../lib/pricing'
-import { isDemo } from '../lib/supabase'
 import { Loading, ErrorState, activityLabel, useLoad } from '../components/ui'
 
 // "Today": what's happening on site, the rock headcount for the next 14 days,
@@ -60,11 +59,6 @@ export default function Dashboard({ admin }) {
         </section>
       </div>
 
-      {isDemo && admin.role === 'super_admin' && (
-        <p className="hint demo-reset">
-          <button className="link-button" onClick={() => { resetDemoData(); reload() }}>Reset demo data</button>
-        </p>
-      )}
     </div>
   )
 }
@@ -87,7 +81,7 @@ function Arrival({ b }) {
           <span className="muted">
             {activityLabel(b.activity)}
             {camping ? ` · check-in 1:00 PM · ${b.nights} night${b.nights > 1 ? 's' : ''}` : ''}
-            {b.source === 'walk_in' ? ' · walk-in' : ''}
+            {b.source !== 'online' ? ` · ${b.source.replace('_', '-')}` : ''}
           </span>
         </span>
         <span className="due">

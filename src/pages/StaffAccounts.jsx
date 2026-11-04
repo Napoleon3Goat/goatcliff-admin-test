@@ -49,7 +49,6 @@ function StaffRow({ admin, s, onDone }) {
       <div className="ledger-row static">
         <span className="ledger-main">
           <strong>{s.name}{me && <span className="hint"> (you)</span>}</strong>
-          <span className="muted break">{s.email}</span>
           {!s.is_active && <span className="status st-bad">Deactivated, can't sign in</span>}
         </span>
         <span className="staff-actions">
@@ -85,7 +84,7 @@ function StaffRow({ admin, s, onDone }) {
 }
 
 function AddStaff({ admin, onClose }) {
-  const [f, setF] = useState({ name: '', email: '', role: 'staff_admin' })
+  const [f, setF] = useState({ name: '', email: '', password: '', role: 'staff_admin' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   async function save(e) {
@@ -99,6 +98,10 @@ function AddStaff({ admin, onClose }) {
       <div className="form-grid">
         <label>Full name<input id="staff-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></label>
         <label>Email<input id="staff-email" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required /></label>
+        <label>Temporary password
+          <input id="staff-password" type="text" autoComplete="off" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required minLength={8} />
+          <span className="hint">8+ characters with upper and lower case, a number and a symbol. Give it to them in person.</span>
+        </label>
         <label>Role
           <select id="staff-role" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
             {Object.entries(ROLE_NAMES).map(([k, label]) => <option key={k} value={k}>{label}</option>)}

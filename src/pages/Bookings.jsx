@@ -85,7 +85,7 @@ export default function Bookings({ admin }) {
                       {b.nights ? ` · ${b.nights} night${b.nights > 1 ? 's' : ''}` : ''}
                       {b.viewing_count ? ` · ${b.viewing_count} viewing` : ''}
                     </span>
-                    <span className="ref-line">{b.reference_number}{b.source === 'walk_in' ? ' · walk-in' : ''}</span>
+                    <span className="ref-line">{b.reference_number}{b.source !== 'online' ? ` · ${b.source.replace('_', '-')}` : ''}</span>
                   </span>
                   <span className="due">
                     {over

@@ -31,23 +31,18 @@ Login needs the backend rule "Admins can read their own account" (see `supabase-
 
 Who sees what is set in `src/lib/menu.js`.
 
-## Real data vs demo data
+## Backend calls
 
-Every backend call is in `src/lib/adminApi.js`.
-
-- **REAL:** activities (reads the `activities` table).
-- **DEMO:** everything else uses sample bookings kept in the browser, with the same column names as the
-  database tables. "Reset demo data" is at the bottom of the Today page.
-
-When a backend piece is ready (access rules per role, booking function, staff Edge Function, analytics
-queries), replace that function in `adminApi.js`. The pages don't change.
+Every backend call is in `src/lib/adminApi.js`. There is no demo data: the site reads and writes the
+Supabase database, and its access rules decide what each role may do. Staff logins are created by the
+`create-staff` Edge Function, which the Super Admin calls from the Staff page.
 
 ## Folder guide
 
 | Path | What it is |
 |---|---|
 | `src/App.jsx` | Login check, role lookup, and which page goes with each address |
-| `src/lib/adminApi.js` | All backend calls (real + demo) |
+| `src/lib/adminApi.js` | All backend calls |
 | `src/lib/menu.js` | Menu items and which roles see them |
 | `src/lib/pricing.js`, `dates.js`, `errors.js` | Same helpers as the guest site |
 | `src/components/AdminLayout.jsx` | Sidebar, phone menu, sign out |
@@ -55,18 +50,20 @@ queries), replace that function in `adminApi.js`. The pages don't change.
 | `src/pages/` | One file per page |
 | `src/index.css` | All styles |
 
-## Demo mode and GitHub Pages
+## Hosting on Vercel
 
-- **No `.env` file (or empty Supabase settings) = DEMO MODE.** The site uses made-up data from
-  `src/lib/demoClient.js` and never touches the database. Any email and password signs in; put "staff" or
-  "field" in the email to see those roles.
-- **Publish on GitHub Pages:** push this folder to the `main` branch, then in the repository go to
-  **Settings → Pages → Build and deployment → Source: GitHub Actions**. The workflow in
-  `.github/workflows/deploy.yml` builds and publishes the site. The link appears under **Actions** and
-  **Settings → Pages** (for example `https://napoleon3goat.github.io/admin_frontend/`).
-- Page links look like `…/admin_frontend/#/bookings`. The `#` lets every page open on GitHub Pages.
-- To connect the real database later, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` under
-  **Settings → Secrets and variables → Actions → Variables**. Leave them out to stay in demo mode.
+1. On vercel.com, **Add New → Project → Import** this GitHub repository.
+2. Vercel detects Vite. Keep the defaults (build `npm run build`, output `dist`) and click **Deploy**.
+   Until step 3 the site shows a "not connected yet" page.
+3. **Settings → Environment Variables**, add both, then **Deployments → ⋯ → Redeploy**:
+   - `VITE_SUPABASE_URL` (Supabase: Project Settings → API → Project URL)
+   - `VITE_SUPABASE_PUBLISHABLE_KEY` (the publishable / anon key; never the secret or service_role key)
+4. Every push to `main` deploys again by itself.
+
+Point both sites at **goatcliff-dev** first and test there. Switch the two values to prod only after the prod
+database has the same changes (see the backend repo's release steps).
+
+Page links look like `…/#/bookings`. The `#` lets every page open on any host without extra settings.
 
 ## Design
 

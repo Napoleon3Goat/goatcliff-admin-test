@@ -14,7 +14,6 @@ function months() {
 const monthName = (ym) => new Date(ym + '-01T00:00:00Z').toLocaleDateString('en-PH', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
 // Monthly report (FR-29). Counts leave out cancelled and expired bookings.
-// The data fields for sex, age, province and "found via" are demo-only until the backend adds them.
 export default function Analytics({ admin }) {
   const options = months()
   const [month, setMonth] = useState(options[0])

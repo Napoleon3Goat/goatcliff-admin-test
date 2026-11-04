@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  getBooking, recordPayment, setAttendance, processCancellation, lastDay, REASONS,
+  getBooking, recordPayment, setAttendance, processCancellation, deleteIdPhotos, lastDay, REASONS, REFUND_METHODS,
 } from '../lib/adminApi'
 import { addDays, formatDate, peso, todayManila } from '../lib/dates'
 import { isCamping, isRock, TENTS } from '../lib/pricing'
@@ -55,7 +55,6 @@ export default function BookingDetail({ admin }) {
             {ages && <><dt>Ages</dt><dd>{ages}</dd></>}
             {b.sex_counts && <><dt>Sex</dt><dd>{b.sex_counts.male || 0} male, {b.sex_counts.female || 0} female</dd></>}
             {tents && <><dt>Tents</dt><dd>{tents}</dd></>}
-            {b.id_photos?.length > 0 && <><dt>ID photos</dt><dd>{b.id_photos.length} uploaded</dd></>}
             {b.capacity_override && <><dt>Note</dt><dd>Accepted beyond the daily limit</dd></>}
           </dl>
         </section>
@@ -71,11 +70,13 @@ export default function BookingDetail({ admin }) {
             {b.found_via && <><dt>Found via</dt><dd>{b.found_via}</dd></>}
             {rock && <><dt>Emergency</dt><dd>{b.emergency_name ? <>{b.emergency_name} · <span className="mono">{b.emergency_contact}</span></> : '—'}</dd></>}
             <dt>Booked</dt><dd>{new Date(b.created_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}</dd>
-            <dt>Entered by</dt><dd>{b.source === 'walk_in' ? (b.created_by_name || 'Staff') : 'Guest (online)'}</dd>
+            <dt>Entered by</dt><dd>{b.source !== 'online' ? (b.created_by_name || 'Staff') : 'Guest (online)'}</dd>
             <dt>Consent</dt><dd>{b.consent_given_at ? `Agreed ${new Date(b.consent_given_at).toLocaleDateString('en-PH', { dateStyle: 'medium' })}` : '—'}</dd>
           </dl>
         </section>
       </div>
+
+      {b.id_photos.length > 0 && <IdPhotos admin={admin} photos={b.id_photos} onDone={reload} />}
 
       <section className="card">
         <h2>Payments</h2>
@@ -101,7 +102,7 @@ export default function BookingDetail({ admin }) {
             {b.cancellations.map((c) => (
               <li key={c.id} className="row-static">
                 <span className="row-main">
-                  <strong>{c.action === 'reschedule' ? `Rescheduled from ${formatDate(c.original_visit_date)} to ${formatDate(c.new_visit_date)}` : c.action === 'refund' ? `Refund ${peso(c.refund_amount)}${c.refund_method ? ` by ${c.refund_method}` : ''}` : 'Cancelled'}</strong>
+                  <strong>{c.action === 'reschedule' ? `Rescheduled from ${formatDate(c.original_visit_date)} to ${formatDate(c.new_visit_date)}` : c.action === 'refund' ? `Refund ${peso(c.refund_amount)}${c.refund_method ? ` by ${REFUND_METHODS[c.refund_method]}` : ''}` : 'Cancelled'}</strong>
                   <span className="muted">{REASONS[c.reason_category]}{c.reason_details ? ` · ${c.reason_details}` : ''} · by {c.processed_by_name}</span>
                 </span>
               </li>
@@ -207,11 +208,14 @@ export function AttendanceButtons({ admin, booking, onDone, disabled }) {
   const [undo, setUndo] = useState(null) // after marking, offer a quick way back
   const future = booking.visit_date > todayManila()
   const LABELS = { upcoming: 'Upcoming', done: 'Done', failed_to_show: 'Failed to show' }
+  // Field Staff may only mark Done or Failed to show; setting a group back to Upcoming is for the front desk.
+  const field = admin.role === 'field_staff'
+  const allowed = (k) => !(field && k === 'upcoming')
   async function set(status, previous) {
     setError(''); setBusy(true)
     try {
       await setAttendance(admin, booking.id, status)
-      setUndo(previous ? { status, previous } : null)
+      setUndo(previous && allowed(previous) ? { status, previous } : null)
       onDone()
     } catch (e) { setError(friendlyError(e)) } finally { setBusy(false) }
   }
@@ -220,7 +224,7 @@ export function AttendanceButtons({ admin, booking, onDone, disabled }) {
       <div className="segmented" role="group" aria-label="Attendance">
         {Object.entries(LABELS).map(([k, label]) => (
           <button key={k} className={booking.attendance_status === k ? 'on' : ''} aria-pressed={booking.attendance_status === k}
-            disabled={disabled || busy || (future && k !== 'upcoming')} onClick={() => k !== booking.attendance_status && set(k, booking.attendance_status)}>
+            disabled={disabled || busy || (future && k !== 'upcoming') || !allowed(k)} onClick={() => k !== booking.attendance_status && set(k, booking.attendance_status)}>
             {label}
           </button>
         ))}
@@ -238,7 +242,7 @@ export function AttendanceButtons({ admin, booking, onDone, disabled }) {
 function ChangeBooking({ admin, booking, onDone }) {
   const [action, setAction] = useState('')
   const [reason, setReason] = useState('')
-  const [refundBy, setRefundBy] = useState('GCash')
+  const [refundBy, setRefundBy] = useState('gcash')
   const [details, setDetails] = useState('')
   const [newDate, setNewDate] = useState('')
   const [refund, setRefund] = useState('')
@@ -293,7 +297,7 @@ function ChangeBooking({ admin, booking, onDone }) {
             {action === 'refund' && (
               <label>Refund by
                 <select id="change-refund-by" value={refundBy} onChange={(e) => setRefundBy(e.target.value)}>
-                  <option>GCash</option><option>Cash</option><option>Bank transfer</option>
+                  {Object.entries(REFUND_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                 </select>
               </label>
             )}
@@ -315,6 +319,39 @@ function ChangeBooking({ admin, booking, onDone }) {
           </div>
         </form>
       )}
+    </section>
+  )
+}
+
+// ID photos the guest uploaded for senior, PWD and Atok local discounts.
+// Check them against the IDs on arrival, then delete them (they are personal data).
+function IdPhotos({ admin, photos, onDone }) {
+  const [asking, setAsking] = useState(false)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function remove() {
+    setBusy(true); setError('')
+    try { await deleteIdPhotos(admin, photos.map((p) => p.path)); onDone() } catch (e) { setError(friendlyError(e)); setBusy(false) }
+  }
+  return (
+    <section className="card">
+      <h2>Discount ID photos</h2>
+      <ul className="id-photos">
+        {photos.map((p) => (
+          <li key={p.path}><a href={p.url} target="_blank" rel="noreferrer"><img src={p.url} alt={p.name} /><span>{p.name}</span></a></li>
+        ))}
+      </ul>
+      {!asking && <button className="btn-quiet small" onClick={() => setAsking(true)}>Delete photos after checking</button>}
+      {asking && (
+        <div className="confirm" role="alertdialog" aria-label="Delete ID photos?">
+          <p><strong>Delete {photos.length} ID photo{photos.length > 1 ? 's' : ''}?</strong> This can't be undone.</p>
+          <div className="actions-row">
+            <button className="btn-quiet" onClick={() => setAsking(false)} disabled={busy}>Keep</button>
+            <button className="btn-danger" onClick={remove} disabled={busy}>{busy ? 'Deleting…' : 'Yes, delete'}</button>
+          </div>
+        </div>
+      )}
+      {error && <p className="error" role="alert">{error}</p>}
     </section>
   )
 }

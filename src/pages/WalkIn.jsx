@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getActivities, createWalkIn, capacityFor, AGE_GROUPS, FOUND_VIA } from '../lib/adminApi'
+import { getActivities, createWalkIn, capacityFor, AGE_GROUPS, FOUND_US, CHANNELS } from '../lib/adminApi'
 import { addDays, formatDate, peso, todayManila } from '../lib/dates'
 import { isCamping, isRock, previewPrice, discountedCount, TENTS } from '../lib/pricing'
 import { friendlyError } from '../lib/errors'
@@ -9,11 +9,11 @@ import { Loading, ErrorState, PageHeader, useLoad } from '../components/ui'
 
 const EMPTY = {
   name: '', contact: '', email: '', groupSize: 1, viewers: 0, seniors: 0, pwd: 0, children: 0, locals: 0,
-  // Demo-only until the backend has columns for them (FR-15, FR-20, FR-29, FR-33)
-  channel: 'walk_in', organizer: false, province: '', foundVia: '', emergencyName: '', emergencyContact: '',
+  // Interview fields (FR-15, FR-20, FR-29, FR-33)
+  channel: 'walk_in', organizer: false, province: '', foundUs: '', emergencyName: '', emergencyContact: '',
   ages: Object.fromEntries(AGE_GROUPS.map((g) => [g, 0])), sexes: { male: 0, female: 0 }, tents4: 0, tents2: 0,
 }
-const CHANNELS = { walk_in: 'Walk-in', messenger: 'Messenger', phone: 'Phone' }
+const STAFF_CHANNELS = Object.entries(CHANNELS).filter(([k]) => k !== 'online')
 const sum = (o) => Object.values(o).reduce((t, n) => t + n, 0)
 const mobile = (v) => /^09\d{9}$/.test(v.replace(/[\s-]/g, ''))
 
@@ -105,18 +105,18 @@ export default function WalkIn({ admin }) {
           <h2>Visit</h2>
           <label>Booked through
             <select id="walkin-channel" value={form.channel} onChange={(e) => set('channel')(e.target.value)}>
-              {Object.entries(CHANNELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+              {STAFF_CHANNELS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
           </label>
           <label>Activity
             <select id="walkin-activity" value={code} onChange={(e) => { setCode(e.target.value); setOverride(false) }} required>
               <option value="">Choose…</option>
-              <optgroup label="Rock and viewing">{others.map((a) => <option key={a.id} value={a.code}>{a.name}</option>)}</optgroup>
+              <optgroup label="Rock">{others.map((a) => <option key={a.id} value={a.code}>{a.name}</option>)}</optgroup>
               <optgroup label="Camping">{camps.map((a) => <option key={a.id} value={a.code}>{a.code} · {groupName(a)} · {peso(a.price)}/night</option>)}</optgroup>
             </select>
           </label>
           <label>{camping ? 'Check-in date' : 'Date'}
-            <input id="walkin-date" type="date" value={date} min={todayManila()} onChange={(e) => setDate(e.target.value)} required />
+            <input id="walkin-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           </label>
           {camping && <Counter label="Nights" value={nights} onChange={setNights} min={1} max={14} />}
           {camping && <p className="hint">Check-in 1:00–6:00 PM · check-out {formatDate(addDays(date, nights))}, 12:00 noon</p>}
@@ -188,9 +188,9 @@ export default function WalkIn({ admin }) {
               <input id="walkin-province" value={form.province} onChange={(e) => set('province')(e.target.value)} />
             </label>
             <label>Found Goatcliff via <span className="hint">(optional)</span>
-              <select id="walkin-found" value={form.foundVia} onChange={(e) => set('foundVia')(e.target.value)}>
+              <select id="walkin-found" value={form.foundUs} onChange={(e) => set('foundUs')(e.target.value)}>
                 <option value="">Choose…</option>
-                {FOUND_VIA.map((f) => <option key={f}>{f}</option>)}
+                {Object.entries(FOUND_US).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </select>
             </label>
           </div>
