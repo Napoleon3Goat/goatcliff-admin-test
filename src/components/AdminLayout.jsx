@@ -25,7 +25,7 @@ export default function AdminLayout({ admin }) {
   return (
     <div className={single ? 'layout layout-single' : 'layout'}>
       <header className="topbar">
-        <span className="brand"><img src={logo} alt="" className="brand-logo" /><span className="wordmark">Goatcliff</span></span>
+        <span className="brand"><img src={logo} alt="" className="brand-logo" /><span className="wordmark">Goat Cliff</span></span>
         {single
           ? <button className="topbar-signout" onClick={() => supabase.auth.signOut()}>Sign out</button>
           : <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="admin-menu">
@@ -36,7 +36,7 @@ export default function AdminLayout({ admin }) {
       {!single && (
         <aside id="admin-menu" className={menuOpen ? 'rail open' : 'rail'}>
           <div className="rail-brand">
-            <span className="brand"><img src={logo} alt="" className="brand-logo" /><span className="wordmark">Goatcliff</span></span>
+            <span className="brand"><img src={logo} alt="" className="brand-logo" /><span className="wordmark">Goat Cliff</span></span>
             <span className="rail-sub">{admin.role === 'field_staff' ? 'Field staff' : 'Front desk'}</span>
           </div>
           <nav aria-label="Admin pages">

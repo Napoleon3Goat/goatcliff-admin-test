@@ -28,7 +28,7 @@ export default function Login() {
     <div className="login-page">
       <form className="card login-card" onSubmit={handleSubmit}>
         <div className="login-head">
-          <span className="brand"><img src={logo} alt="" className="brand-logo" /><span className="wordmark">Goatcliff</span></span>
+          <span className="brand"><img src={logo} alt="" className="brand-logo" /><span className="wordmark">Goat Cliff</span></span>
           <h1>Admin sign in</h1>
         </div>
 

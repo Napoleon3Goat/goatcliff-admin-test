@@ -76,7 +76,7 @@ function ConnectedApp() {
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) setAdminError('Could not load your account. Check your connection and try again.')
-        else if (!data) setAdminError('This login is not registered as a Goatcliff admin.')
+        else if (!data) setAdminError('This login is not registered as a Goat Cliff admin.')
         else if (!data.is_active) setAdminError('This admin account has been deactivated.')
         else setAdmin(data)
       })

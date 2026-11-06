@@ -187,7 +187,7 @@ export default function WalkIn({ admin }) {
             <label>Province <span className="hint">(optional)</span>
               <input id="walkin-province" value={form.province} onChange={(e) => set('province')(e.target.value)} />
             </label>
-            <label>Found Goatcliff via <span className="hint">(optional)</span>
+            <label>Found Goat Cliff via <span className="hint">(optional)</span>
               <select id="walkin-found" value={form.foundUs} onChange={(e) => set('foundUs')(e.target.value)}>
                 <option value="">Choose…</option>
                 {Object.entries(FOUND_US).map(([k, label]) => <option key={k} value={k}>{label}</option>)}

@@ -48,7 +48,7 @@ export default function Analytics({ admin }) {
               <Bars rows={data.byActivity} />
             </section>
             <section className="panel">
-              <h2>How they found Goatcliff</h2>
+              <h2>How they found Goat Cliff</h2>
               <Bars rows={data.byFoundVia} />
             </section>
             <section className="panel">
