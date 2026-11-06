@@ -60,7 +60,7 @@ function Row({ admin, c, onDone }) {
         <dt>Reason</dt><dd>{REASONS[c.reason_category]}{c.reason_details ? ` · ${c.reason_details}` : ''}</dd>
         <dt>Date</dt><dd>{c.action === 'reschedule' ? `${formatDate(c.original_visit_date)} → ${formatDate(c.new_visit_date)}` : formatDate(c.original_visit_date)}</dd>
         {c.action === 'refund' && <><dt>Refund</dt><dd>{peso(c.refund_amount)}{c.refund_method ? ` by ${c.refund_method}` : ''} · {c.refund_status === 'processed' ? 'Sent' : 'Not sent yet'}</dd></>}
-        <dt>Guest told</dt><dd>{c.guest_notified_at ? new Date(c.guest_notified_at).toLocaleDateString('en-PH', { dateStyle: 'medium' }) : 'Not yet'}</dd>
+        <dt>Customer updated</dt><dd>{c.guest_notified_at ? new Date(c.guest_notified_at).toLocaleDateString('en-PH', { dateStyle: 'medium' }) : 'Not yet'}</dd>
       </dl>
       <div className="actions-row wrap">
         {c.action === 'refund' && c.refund_status === 'pending' && (
@@ -73,7 +73,7 @@ function Row({ admin, c, onDone }) {
           </span>
         )}
         {!c.guest_notified_at && (
-          <button className="btn-quiet small" onClick={() => run(() => markGuestNotified(admin, c.id))}>Mark guest as told</button>
+          <button className="btn-quiet small" onClick={() => run(() => markGuestNotified(admin, c.id))}>Mark customer updated</button>
         )}
       </div>
       {error && <p className="error">{error}</p>}

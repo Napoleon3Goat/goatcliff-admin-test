@@ -15,9 +15,8 @@ export default function Payments({ admin }) {
   const [receipt, setReceipt] = useState(null)
   const { data, error, loading, reload } = useLoad(() => listAwaitingPayment(admin), [])
   const q = search.trim().toLowerCase()
+  // Oldest unpaid bookings first: those most likely need a follow-up.
   const rows = (data || []).filter((b) => !q || [b.reference_number, b.guest_name].some((v) => v.toLowerCase().includes(q)))
-    // Holds that already ended first: those need a decision.
-    .sort((x, y) => Number(y.hold_ended) - Number(x.hold_ended))
 
   function done(message) { setReceipt(message); setOpenId(null); reload() }
 
@@ -52,7 +51,6 @@ function AwaitingRow({ admin, b, open, onToggle, onDone }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [confirmRelease, setConfirmRelease] = useState(false)
-  const minutesLeft = b.hold_expires_at ? Math.round((new Date(b.hold_expires_at) - Date.now()) / 60000) : null
 
   async function run(fn, message) {
     setError(''); setBusy(true)
@@ -73,9 +71,7 @@ function AwaitingRow({ admin, b, open, onToggle, onDone }) {
         <span className="ledger-main">
           <strong><span className="ref-line inline">{b.reference_number}</span> {b.guest_name}</strong>
           <span className="muted"><Link to={`/bookings/${b.id}`}>{activityLabel(b.activity)} · {formatDate(b.visit_date)}</Link> · {b.group_size} people</span>
-          <span className={b.hold_ended ? 'status st-bad' : 'status st-plain'}>
-            {b.hold_ended ? 'Hold ended, spot still held' : `Spot held ${Math.max(0, minutesLeft)} more minutes`}
-          </span>
+          <span className="status st-plain">Booked {sinceText(b.created_at)}, not paid yet</span>
         </span>
         <span className="due">
           <b>{pesoShort(b.amount_due)}</b><span>down payment</span>
@@ -95,7 +91,7 @@ function AwaitingRow({ admin, b, open, onToggle, onDone }) {
           {error && <p className="error" role="alert">{error}</p>}
           <div className="actions-row wrap">
             <button type="button" className="btn-quiet" onClick={onToggle}>Cancel</button>
-            {b.hold_ended && !confirmRelease && (
+            {!confirmRelease && (
               <button type="button" className="btn-quiet danger" disabled={busy} onClick={() => setConfirmRelease(true)}>Release spot (not paid)</button>
             )}
             <button className="btn-primary" disabled={busy}>Record GCash payment</button>
@@ -114,4 +110,11 @@ function AwaitingRow({ admin, b, open, onToggle, onDone }) {
       )}
     </li>
   )
+}
+
+// "today at 3:40 PM", "yesterday", "3 days ago"
+function sinceText(iso) {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (days <= 0) return 'today at ' + new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })
+  return days === 1 ? 'yesterday' : `${days} days ago`
 }

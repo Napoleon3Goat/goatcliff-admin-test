@@ -373,3 +373,4 @@ a.ledger-row:hover strong { text-decoration: underline; text-underline-offset: 3
 .id-photos a { display: grid; gap: 4px; font-size: 0.8rem; color: var(--ink-2); text-decoration: none; }
 .id-photos img { width: 140px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
 .refund-sent { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.confirm.inline { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 8px 10px; }

@@ -23,7 +23,7 @@ Login needs the backend rule "Admins can read their own account" (see `supabase-
 | New booking (walk-ins, Messenger and phone bookings; price preview; daily limit check) | ✓ | ✓ | |
 | GCash checks (find by GC- reference, record the GCash payment, release an unpaid spot) | ✓ | ✓ | |
 | Requests (reschedules, refunds, cancellations) | ✓ | ✓ | |
-| Calendar & closures (close a day, change the rock's daily limit, see affected bookings) | ✓ | ✓ | |
+| Calendar control (close or reopen a day, change the rock's daily limit, see affected bookings) | ✓ | ✓ | |
 | Areas & prices (edit prices / hide an area / add one) | ✓ edit | ✓ view | |
 | Staff (add, change role, deactivate) | ✓ | | |
 | Reports (per activity, busiest weekdays, who the guests are, download CSV) | ✓ | | |

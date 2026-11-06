@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getActivities, listOverrides, saveOverride, listBookings } from '../lib/adminApi'
+import { getActivities, listOverrides, saveOverride, reopenDay, listBookings } from '../lib/adminApi'
 import { formatDate, todayManila } from '../lib/dates'
 import { isCamping } from '../lib/pricing'
 import { friendlyError } from '../lib/errors'
 import { Loading, ErrorState, Empty, PageHeader, Badge, PAYMENT, activityLabel, useLoad } from '../components/ui'
 
-// Close a day (typhoon, repairs) or change the rock's daily cap for one date.
+// Calendar control: close a day (typhoon, repairs), reopen it, or change the rock's daily limit for one date.
 // Closing blocks NEW bookings only; existing ones are listed so each can be rescheduled or refunded.
 export default function DateControls({ admin }) {
   const acts = useLoad(() => getActivities(), [])
@@ -55,7 +55,7 @@ export default function DateControls({ admin }) {
 
   return (
     <div>
-      <PageHeader title="Calendar & closures" />
+      <PageHeader title="Calendar control" />
       <div className="grid-2 align-start">
         <form className="card form" onSubmit={ask}>
           <h2>Change a day</h2>
@@ -94,8 +94,7 @@ export default function DateControls({ admin }) {
           {confirm && (
             <div className="confirm" role="alertdialog" aria-label="Close this day?">
               <p><strong>Close {scopeName} on {formatDate(date)}?</strong>{' '}
-                {confirm.count ? `${confirm.count} booking${confirm.count > 1 ? 's are' : ' is'} already on this date; you'll get the list to contact each guest.` : 'No bookings on this date yet.'}{' '}
-                Announce it on Messenger and the Facebook page too.</p>
+                {confirm.count ? `${confirm.count} booking${confirm.count > 1 ? 's are' : ' is'} already on this date; you'll get the list to contact each guest.` : 'No bookings on this date yet.'}</p>
               <div className="actions-row">
                 <button type="button" className="btn-quiet" onClick={() => setConfirm(null)}>Don't close</button>
                 <button type="button" className="btn-danger" onClick={save} disabled={saving}>Yes, close it</button>
@@ -133,19 +132,41 @@ export default function DateControls({ admin }) {
             {list.data && upcoming.length === 0 && <p className="muted">No closed days or cap changes coming up.</p>}
             {upcoming.length > 0 && (
               <ul className="rows">
-                {upcoming.map((o) => (
-                  <li key={o.id} className="row-static">
-                    <span className="row-main">
-                      <strong>{formatDate(o.override_date)} · {o.all ? 'All activities' : activityLabel(o.activity)}</strong>
-                      <span className="muted">{o.is_closed ? 'Closed' : `Cap ${o.daily_capacity} people`} · {o.reason} · by {o.set_by_name}</span>
-                    </span>
-                  </li>
-                ))}
+                {upcoming.map((o) => <ChangeRow key={o.id} admin={admin} o={o} onDone={list.reload} />)}
               </ul>
             )}
           </section>
         </div>
       </div>
     </div>
+  )
+}
+
+// One closed day or changed limit. A closed day can be reopened (it asks first).
+function ChangeRow({ admin, o, onDone }) {
+  const [asking, setAsking] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const name = o.all ? 'all activities' : activityLabel(o.activity)
+  async function reopen() {
+    setBusy(true); setError('')
+    try { await reopenDay(admin, o); onDone() } catch (e) { setError(friendlyError(e)); setBusy(false) }
+  }
+  return (
+    <li className="row-static">
+      <span className="row-main">
+        <strong>{formatDate(o.override_date)} · {o.all ? 'All activities' : activityLabel(o.activity)}</strong>
+        <span className="muted">{o.is_closed ? 'Closed' : `Limit ${o.daily_capacity} people`} · {o.reason} · by {o.set_by_name}</span>
+        {error && <span className="error" role="alert">{error}</span>}
+      </span>
+      {o.is_closed && !asking && <button className="btn-quiet small" onClick={() => setAsking(true)}>Reopen</button>}
+      {asking && (
+        <span className="confirm inline" role="alertdialog" aria-label="Reopen this day?">
+          <span>Reopen {name} on {formatDate(o.override_date)}?</span>
+          <button className="btn-quiet small" onClick={() => setAsking(false)} disabled={busy}>Keep closed</button>
+          <button className="btn-primary small" onClick={reopen} disabled={busy}>{busy ? 'Reopening…' : 'Yes, reopen'}</button>
+        </span>
+      )}
+    </li>
   )
 }

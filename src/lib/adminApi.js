@@ -188,12 +188,11 @@ export async function recordPayment(admin, bookingId, fields) {
 // Online bookings still waiting for their GCash down payment.
 export async function listAwaitingPayment(admin) {
   const acts = await activityMap()
-  const rows = must(await supabase.from('bookings').select('*').eq('payment_status', 'pending').neq('attendance_status', 'cancelled').order('hold_expires_at'))
-  const now = Date.now()
-  return rows.map((b) => ({ ...shape(b, acts), hold_ended: b.hold_expires_at ? new Date(b.hold_expires_at).getTime() < now : false }))
+  const rows = must(await supabase.from('bookings').select('*').eq('payment_status', 'pending').neq('attendance_status', 'cancelled').order('created_at'))
+  return rows.map((b) => shape(b, acts))
 }
 
-// Frees the spot of an unpaid booking whose hold ended (an automatic job comes later).
+// Frees the spot of a booking the guest never paid for (automatic hold expiry comes in Capstone 2).
 export async function releaseUnpaid(admin, bookingId) {
   must(await supabase.from('bookings').update({ payment_status: 'expired' }).eq('id', bookingId))
 }
@@ -331,7 +330,8 @@ export async function listOverrides(admin) {
   const activeIds = acts.filter((a) => a.is_active).map((a) => a.id)
   // Rows saved together with "All activities" (same date, same setting, every active activity) show as one entry.
   const groups = {}
-  for (const o of rows) (groups[[o.override_date, o.is_closed, o.daily_capacity, o.reason].join('|')] ||= []).push(o)
+  // A reopened day (open, no limit) is a normal day again, so it isn't listed.
+  for (const o of rows.filter((r) => r.is_closed || r.daily_capacity != null)) (groups[[o.override_date, o.is_closed, o.daily_capacity, o.reason].join('|')] ||= []).push(o)
   const out = []
   for (const list of Object.values(groups)) {
     const all = activeIds.length > 1 && activeIds.every((id) => list.some((o) => o.activity_id === id))
@@ -355,6 +355,17 @@ export async function saveOverride(admin, { activity_id, override_date, is_close
   return (await listBookings(admin, { from: override_date, to: override_date }))
     .filter((b) => (activity_id === 'ALL' || b.activity_id === activity_id) && b.attendance_status === 'upcoming'
       && !['expired', 'refunded'].includes(b.payment_status))
+}
+
+// Reopen a closed day: open again with no special limit, so the normal daily limit applies.
+// The row stays (nothing is deleted); its reason records that it was reopened.
+// Needs the backend to allow an open row without a limit (date_overrides_check relaxed).
+export async function reopenDay(admin, o) {
+  let q = supabase.from('date_overrides')
+    .update({ is_closed: false, daily_capacity: null, reason: `Reopened (was: ${o.reason})`, set_by: admin.id })
+    .eq('override_date', o.override_date)
+  q = o.all ? q.eq('is_closed', true) : q.eq('id', o.id)
+  must(await q)
 }
 
 // ---------- staff accounts (Super Admin) ----------
@@ -411,7 +422,6 @@ export async function dashboardSummary(admin) {
     arrivingToday: todays.filter((b) => b.visit_date === today),
     peopleToday: todays.reduce((t, b) => t + b.group_size, 0),
     awaiting: live.filter((b) => b.payment_status === 'pending' && b.source === 'online').length,
-    holdsEnded: live.filter((b) => b.payment_status === 'pending' && b.hold_expires_at && new Date(b.hold_expires_at) < new Date()).length,
     rockCap: rock ? await capacityFor(admin, rock, today) : null,
     upcoming: live.filter((b) => b.visit_date > today && b.visit_date <= addDays(today, 7)),
     // Rock headcount for the next 14 days (the elevation profile on the Today page)

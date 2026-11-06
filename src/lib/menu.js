@@ -8,7 +8,7 @@ export const MENU = [
   { path: '/walk-in',       label: 'New booking',         roles: ['super_admin', 'staff_admin'] },
   { path: '/payments',      label: 'GCash checks',        roles: ['super_admin', 'staff_admin'] },
   { path: '/cancellations', label: 'Requests',            roles: ['super_admin', 'staff_admin'], group: 'manage' },
-  { path: '/date-controls', label: 'Calendar & closures', roles: ['super_admin', 'staff_admin'], group: 'manage' },
+  { path: '/date-controls', label: 'Calendar control', roles: ['super_admin', 'staff_admin'], group: 'manage' },
   { path: '/activities',    label: 'Areas & prices',      roles: ['super_admin', 'staff_admin'], group: 'manage' },
   { path: '/staff',         label: 'Staff',               roles: ['super_admin'], group: 'manage' },
   { path: '/analytics',     label: 'Reports',             roles: ['super_admin', 'staff_admin'], group: 'manage' },
