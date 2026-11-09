@@ -80,7 +80,8 @@ function DayBars({ rows }) {
         <div key={date} role="listitem" className="day-bar" title={`${date}: ${v} booking${v === 1 ? '' : 's'}`}>
           <span className="day-bar-value">{v || ''}</span>
           <span className="day-bar-fill" style={{ height: (v / max) * 100 + '%' }} />
-          <span className="day-bar-label">{Number(date.slice(8))}</span>
+          {/* every day number fits on a laptop; on a phone only 1, 5, 10, 15... are shown (CSS) */}
+          <span className={`day-bar-label${Number(date.slice(8)) === 1 || Number(date.slice(8)) % 5 === 0 ? ' key' : ''}`}>{Number(date.slice(8))}</span>
         </div>
       ))}
     </div>
