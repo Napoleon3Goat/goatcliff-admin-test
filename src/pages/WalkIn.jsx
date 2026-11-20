@@ -6,11 +6,12 @@ import { isCamping, isRock, previewPrice, discountedCount, TENTS } from '../lib/
 import { friendlyError } from '../lib/errors'
 import Counter from '../components/Counter'
 import { Loading, ErrorState, PageHeader, useLoad } from '../components/ui'
+import ProvincePicker, { EMPTY_PROVINCE, provinceError } from '../components/ProvincePicker'
 
 const EMPTY = {
   name: '', contact: '', email: '', groupSize: 1, viewers: 0, seniors: 0, pwd: 0, children: 0, locals: 0,
   // Interview fields (FR-15, FR-20, FR-29, FR-33)
-  channel: 'walk_in', organizer: false, province: '', foundUs: '', emergencyName: '', emergencyContact: '',
+  channel: 'walk_in', organizer: false, province: EMPTY_PROVINCE, foundUs: '', emergencyName: '', emergencyContact: '',
   ages: Object.fromEntries(AGE_GROUPS.map((g) => [g, 0])), sexes: { male: 0, female: 0 }, tents4: 0, tents2: 0,
 }
 const STAFF_CHANNELS = Object.entries(CHANNELS).filter(([k]) => k !== 'online')
@@ -64,6 +65,7 @@ export default function WalkIn({ admin }) {
     if (rock && (!form.emergencyName.trim() || !mobile(form.emergencyContact))) return setSaveError('Enter an emergency contact name and 11-digit mobile number.')
     if (sum(form.ages) !== form.groupSize) return setSaveError(`The age groups must add up to ${form.groupSize}.`)
     if (form.sexes.male + form.sexes.female !== form.groupSize) return setSaveError(`Male and female must add up to ${form.groupSize}.`)
+    if (provinceError(form.province)) return setSaveError('Province: ' + provinceError(form.province))
     setSaving(true)
     try {
       const b = await createWalkIn(admin, {
@@ -184,9 +186,7 @@ export default function WalkIn({ admin }) {
             <input id="walkin-email" type="email" value={form.email} onChange={(e) => set('email')(e.target.value)} />
           </label>
           <div className="form-grid">
-            <label>Province <span className="hint">(optional)</span>
-              <input id="walkin-province" value={form.province} onChange={(e) => set('province')(e.target.value)} />
-            </label>
+            <ProvincePicker value={form.province} onChange={set('province')} label="Province" />
             <label>Found Goat Cliff via <span className="hint">(optional)</span>
               <select id="walkin-found" value={form.foundUs} onChange={(e) => set('foundUs')(e.target.value)}>
                 <option value="">Choose…</option>

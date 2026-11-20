@@ -6,6 +6,7 @@
 import { supabase } from './supabase'
 import { addDays, todayManila } from './dates'
 import { isCamping, isRock, previewPrice } from './pricing'
+import { provinceToSave } from '../components/ProvincePicker'
 
 const must = ({ data, error }) => { if (error) throw error; return data }
 
@@ -313,7 +314,7 @@ function walkInRow(activity, { visit_date, nights, form, capacity_override, cons
     senior_count: form.organizer ? 0 : form.seniors, pwd_count: form.organizer ? 0 : form.pwd,
     child_count: form.organizer ? 0 : form.children, local_count: form.organizer ? 0 : form.locals,
     is_organizer: !!form.organizer,
-    province: form.province?.trim() || null,
+    province: provinceToSave(form.province),
     found_us: form.foundUs || null,
     emergency_contact_name: rock ? form.emergencyName.trim() : null,
     emergency_contact_number: rock ? form.emergencyContact.replace(/[\s-]/g, '') : null,

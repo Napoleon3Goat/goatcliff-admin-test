@@ -407,3 +407,16 @@ a.ledger-row:hover strong { text-decoration: underline; text-underline-offset: 3
 .check-line input { width: 20px; height: 20px; min-height: 0; }
 @media (max-width: 560px) { .wallet-body { grid-template-columns: minmax(0, 1fr); } }
 .wallet-form .wide { grid-column: 1 / -1; }
+
+/* Added Nov 20: province picker (same as the guest site) */
+.province { display: grid; gap: 6px; }
+.province-box { position: relative; }
+.province > label:first-child { display: block; }
+.province-list {
+  position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none;
+  max-height: 240px; overflow-y: auto; background: var(--white); border: 1.5px solid var(--line); border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(20, 36, 27, 0.12);
+}
+.province-list button { width: 100%; min-height: 40px; justify-content: flex-start; background: none; border: none; border-radius: 7px; padding: 8px 12px; color: var(--ink); font-weight: 400; }
+.province-list button:hover, .province-list button:focus-visible { background: var(--ground); }
+.province-list button[aria-selected="true"] { font-weight: 700; }

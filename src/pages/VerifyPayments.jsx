@@ -8,11 +8,11 @@ import { Loading, ErrorState, Empty, PageHeader, activityLabel, useLoad } from '
 const WALLET_NAMES = { gcash: 'GCash', maya: 'Maya' }
 
 // Payment checks: online bookings whose down payment still needs checking.
-//  * "Proof sent": the guest typed their GCash / Maya reference and attached a receipt screenshot.
-//    Find the reference and amount in Goat Cliff's GCash / Maya history, then Confirm.
-//    Not there? It's fake or wrong: release the spot.
-//  * "No proof": older bookings from before the payment page (guests sent proof on Facebook).
-//    Record the payment by hand, or release the spot.
+//  * "Awaiting verification": the guest typed their GCash / Maya reference and attached a receipt.
+//    Look for the reference and amount in Goat Cliff's GCash / Maya history, then confirm the payment.
+//    Not there? Reject it: the booking is cancelled and the slot opens again.
+//  * "No payment proof submitted": older bookings from before the payment page (proof sent on Facebook).
+//    Record the payment by hand, or cancel the unpaid booking.
 // Guests still inside their 5-minute timer don't show here (they're still paying).
 export default function Payments({ admin }) {
   const [search, setSearch] = useState('')
@@ -43,7 +43,7 @@ export default function Payments({ admin }) {
 
       {withProof.length > 0 && (
         <>
-          <h2>Proof sent ({withProof.length})</h2>
+          <h2>Awaiting verification ({withProof.length})</h2>
           <ul className="ledger panel">
             {withProof.map((b) => <ProofRow key={b.id} admin={admin} b={b} onDone={done} />)}
           </ul>
@@ -52,7 +52,7 @@ export default function Payments({ admin }) {
 
       {noProof.length > 0 && (
         <>
-          <h2>No proof ({noProof.length})</h2>
+          <h2>No payment proof submitted ({noProof.length})</h2>
           <ul className="ledger panel">
             {noProof.map((b) => (
               <AwaitingRow key={b.id} admin={admin} b={b} open={openId === b.id}
@@ -94,35 +94,35 @@ function ProofRow({ admin, b, onDone }) {
           <strong><span className="ref-line inline">{b.reference_number}</span> {b.guest_name}</strong>
           <span className="muted"><Link to={`/bookings/${b.id}`}>{activityLabel(b.activity)} · {formatDate(b.visit_date)}</Link> · {b.group_size} people</span>
           <span className="status st-plain">
-            {WALLET_NAMES[p.method] || p.method} reference <b className="pay-ref">{p.transaction_reference}</b> · sent {sinceText(p.created_at)}
+            {WALLET_NAMES[p.method] || p.method} reference no. <b className="pay-ref">{p.transaction_reference}</b> · submitted {sinceText(p.created_at)}
           </span>
         </span>
         <span className="due"><b>{pesoShort(p.amount)}</b><span>down payment</span></span>
       </div>
 
-      <p className="muted">Find this reference and amount in Goat Cliff's {WALLET_NAMES[p.method] || ''} history.</p>
+      <p className="muted">Check that this reference number and amount appear in Goat Cliff's {WALLET_NAMES[p.method] || ''} transaction history.</p>
       {error && <p className="error" role="alert">{error}</p>}
 
       <div className="actions-row wrap">
         {p.receipt_path
-          ? <button type="button" className="btn-quiet" onClick={openScreenshot}>View screenshot</button>
-          : <span className="muted">No screenshot</span>}
+          ? <button type="button" className="btn-quiet" onClick={openScreenshot}>View receipt</button>
+          : <span className="muted">No receipt attached</span>}
         {!confirmRelease && (
-          <button type="button" className="btn-quiet danger" disabled={busy} onClick={() => setConfirmRelease(true)}>Not found: release spot</button>
+          <button type="button" className="btn-quiet danger" disabled={busy} onClick={() => setConfirmRelease(true)}>Reject payment</button>
         )}
         <button type="button" className="btn-primary" disabled={busy}
-          onClick={() => run(() => confirmProof(admin, p), `Confirmed ${peso(p.amount)} for ${b.guest_name} (${b.reference_number}).`)}>
-          Found it: confirm
+          onClick={() => run(() => confirmProof(admin, p), `Payment of ${peso(p.amount)} confirmed for ${b.guest_name} (${b.reference_number}).`)}>
+          Confirm payment
         </button>
       </div>
 
       {confirmRelease && (
-        <div className="confirm" role="alertdialog" aria-label="Release this spot?">
-          <p><strong>Release {activityLabel(b.activity)} on {formatDate(b.visit_date)}?</strong> The proof is marked failed, {b.guest_name}'s booking ends and the spot opens for others. Only do this if the reference really isn't in Goat Cliff's {WALLET_NAMES[p.method] || ''}.</p>
+        <div className="confirm" role="alertdialog" aria-label="Reject this payment?">
+          <p><strong>Reject this payment?</strong> The payment will be marked as rejected and {b.guest_name}'s booking for {activityLabel(b.activity)} on {formatDate(b.visit_date)} will be cancelled, so the slot becomes available to other guests. Only reject it if the reference number does not appear in Goat Cliff's {WALLET_NAMES[p.method] || ''} history.</p>
           <div className="actions-row">
-            <button type="button" className="btn-quiet" onClick={() => setConfirmRelease(false)}>Keep the booking</button>
+            <button type="button" className="btn-quiet" onClick={() => setConfirmRelease(false)}>Go back</button>
             <button type="button" className="btn-danger" disabled={busy}
-              onClick={() => run(() => rejectProof(admin, p), `Released the spot held for ${b.guest_name} (${b.reference_number}).`)}>Yes, release it</button>
+              onClick={() => run(() => rejectProof(admin, p), `Payment rejected. The slot held for ${b.guest_name} (${b.reference_number}) is available again.`)}>Reject payment</button>
           </div>
         </div>
       )}
@@ -158,11 +158,11 @@ function AwaitingRow({ admin, b, open, onToggle, onDone }) {
         <span className="ledger-main">
           <strong><span className="ref-line inline">{b.reference_number}</span> {b.guest_name}</strong>
           <span className="muted"><Link to={`/bookings/${b.id}`}>{activityLabel(b.activity)} · {formatDate(b.visit_date)}</Link> · {b.group_size} people</span>
-          <span className="status st-plain">Booked {sinceText(b.created_at)}, no payment proof</span>
+          <span className="status st-plain">Booked {sinceText(b.created_at)} · no payment proof submitted</span>
         </span>
         <span className="due">
           <b>{pesoShort(b.amount_due)}</b><span>down payment</span>
-          {!open && <button className="btn-small" onClick={onToggle}>Record</button>}
+          {!open && <button className="btn-small" onClick={onToggle}>Record payment</button>}
         </span>
       </div>
       {open && (
@@ -183,19 +183,19 @@ function AwaitingRow({ admin, b, open, onToggle, onDone }) {
           </div>
           {error && <p className="error" role="alert">{error}</p>}
           <div className="actions-row wrap">
-            <button type="button" className="btn-quiet" onClick={onToggle}>Cancel</button>
+            <button type="button" className="btn-quiet" onClick={onToggle}>Close</button>
             {!confirmRelease && (
-              <button type="button" className="btn-quiet danger" disabled={busy} onClick={() => setConfirmRelease(true)}>Release spot (not paid)</button>
+              <button type="button" className="btn-quiet danger" disabled={busy} onClick={() => setConfirmRelease(true)}>Cancel unpaid booking</button>
             )}
-            <button className="btn-primary" disabled={busy}>Record payment</button>
+            <button className="btn-primary" disabled={busy}>Save payment</button>
           </div>
           {confirmRelease && (
-            <div className="confirm" role="alertdialog" aria-label="Release this spot?">
-              <p><strong>Release {activityLabel(b.activity)} on {formatDate(b.visit_date)}?</strong> {b.guest_name}'s booking ends and the spot opens for others. Only do this if they really didn't pay.</p>
+            <div className="confirm" role="alertdialog" aria-label="Cancel this unpaid booking?">
+              <p><strong>Cancel this unpaid booking?</strong> {b.guest_name}'s booking for {activityLabel(b.activity)} on {formatDate(b.visit_date)} will be cancelled and the slot becomes available to other guests. Only do this if no payment was received.</p>
               <div className="actions-row">
-                <button type="button" className="btn-quiet" onClick={() => setConfirmRelease(false)}>Keep the booking</button>
+                <button type="button" className="btn-quiet" onClick={() => setConfirmRelease(false)}>Go back</button>
                 <button type="button" className="btn-danger" disabled={busy}
-                  onClick={() => run(() => releaseUnpaid(admin, b.id), `Released the spot held for ${b.guest_name} (${b.reference_number}).`)}>Yes, release it</button>
+                  onClick={() => run(() => releaseUnpaid(admin, b.id), `Unpaid booking cancelled. The slot held for ${b.guest_name} (${b.reference_number}) is available again.`)}>Cancel booking</button>
               </div>
             </div>
           )}
