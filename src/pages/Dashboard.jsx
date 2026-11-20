@@ -33,8 +33,8 @@ export default function Dashboard({ admin }) {
       {data.awaiting > 0 && (
         <p className="act-line">
           <DashedRing />
-          <span>{data.awaiting} GCash payment{data.awaiting === 1 ? '' : 's'} to check</span>
-          <Link to="/payments">Check GCash</Link>
+          <span>{data.awaiting} payment{data.awaiting === 1 ? '' : 's'} to check</span>
+          <Link to="/payments">Check payments</Link>
         </p>
       )}
 

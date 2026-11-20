@@ -109,5 +109,6 @@ export function previewPrice(activity, form) {
   }
 
   const total = Math.round((subtotal - discount + tents) * 100) / 100
-  return { lines, total, downPayment: Math.round(total * DOWN_PAYMENT * 100) / 100 }
+  // discount = pesos taken off (saved with the booking for the monthly report)
+  return { lines, total, discount, downPayment: Math.round(total * DOWN_PAYMENT * 100) / 100 }
 }

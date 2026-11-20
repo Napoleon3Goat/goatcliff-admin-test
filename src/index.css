@@ -215,7 +215,7 @@ select option, select optgroup { color: var(--ink); background-color: #fff; }
 .k-ridge { --k: var(--pine-2); } .k-limit { --k: var(--rope); } .k-closed { --k: var(--stone); }
 .k-taken { --k: var(--pine-2); } .k-arriving { --k: var(--rope); } .k-free { --k: #fff; --kb: #9fb093; } .k-off { --k: var(--stone); }
 
-/* ---------- Ledger rows (Today, Bookings, GCash checks, Staff) ---------- */
+/* ---------- Ledger rows (Today, Bookings, Payment checks, Staff) ---------- */
 .ledger { list-style: none; margin: 0 0 12px; padding: 0; }
 .ledger.panel { padding: 4px 20px; }
 .ledger > li + li { border-top: 1px solid var(--line); }
@@ -390,3 +390,6 @@ a.ledger-row:hover strong { text-decoration: underline; text-underline-offset: 3
   .bars li { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; }
   .bars .bar-label { grid-column: 1 / -1; white-space: normal; }
 }
+
+/* Added Nov 20: Payment checks */
+.pay-ref { letter-spacing: 0.04em; }

@@ -5,7 +5,7 @@ import { menuFor, ROLE_NAMES } from '../lib/menu'
 import logo from '../assets/logo-white.png'
 
 // The frame around every admin page: the pine-green menu rail on the left, the page on the right.
-// <Outlet /> is where the current page (Bookings, GCash checks, ...) appears.
+// <Outlet /> is where the current page (Bookings, Payment checks, ...) appears.
 // Field Staff have one page only, so they get a simple top bar instead of a menu.
 export default function AdminLayout({ admin }) {
   const [menuOpen, setMenuOpen] = useState(false) // phones: the menu is hidden until tapped

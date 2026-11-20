@@ -6,7 +6,7 @@ export const MENU = [
   { path: '/',              label: 'Today',               roles: ['super_admin', 'staff_admin'] },
   { path: '/bookings',      label: 'Bookings',            roles: ['super_admin', 'staff_admin'] },
   { path: '/walk-in',       label: 'New booking',         roles: ['super_admin', 'staff_admin'] },
-  { path: '/payments',      label: 'GCash checks',        roles: ['super_admin', 'staff_admin'] },
+  { path: '/payments',      label: 'Payment checks',        roles: ['super_admin', 'staff_admin'] },
   { path: '/cancellations', label: 'Requests',            roles: ['super_admin', 'staff_admin'], group: 'manage' },
   { path: '/date-controls', label: 'Calendar control', roles: ['super_admin', 'staff_admin'], group: 'manage' },
   { path: '/activities',    label: 'Areas & prices',      roles: ['super_admin', 'staff_admin'], group: 'manage' },

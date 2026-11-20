@@ -185,11 +185,48 @@ export async function recordPayment(admin, bookingId, fields) {
   await syncPaid(bookingId)
 }
 
-// Online bookings still waiting for their GCash down payment.
+// Online bookings waiting for their down payment to be checked.
+// Each booking gets `proof`: the payment the guest sent (reference + screenshot), or null.
+// Bookings still inside their 5-minute timer are left out: the guest is still paying.
 export async function listAwaitingPayment(admin) {
+  // First end the holds whose 5 minutes are up, so they don't show here
+  must(await supabase.rpc('release_expired_holds'))
+
   const acts = await activityMap()
-  const rows = must(await supabase.from('bookings').select('*').eq('payment_status', 'pending').neq('attendance_status', 'cancelled').order('created_at'))
-  return rows.map((b) => shape(b, acts))
+  const rows = must(await supabase.from('bookings').select('*')
+    .eq('payment_status', 'pending').neq('attendance_status', 'cancelled').order('created_at'))
+  const waiting = rows.filter((b) => b.hold_expires_at === null)   // no timer = proof sent, or an older booking
+
+  // The proofs guests sent (payments still "pending"), matched to their booking
+  const ids = waiting.map((b) => b.id)
+  const proofs = ids.length === 0 ? [] : must(await supabase.from('payments').select('*')
+    .in('booking_id', ids).eq('status', 'pending').order('created_at'))
+
+  return waiting.map((b) => ({
+    ...shape(b, acts),
+    proof: proofs.find((p) => p.booking_id === b.id) || null,
+  }))
+}
+
+// A link to open a guest's receipt screenshot (private, works for 10 minutes)
+export async function receiptLink(path) {
+  const data = must(await supabase.storage.from('payment-receipts').createSignedUrl(path, 600))
+  return data.signedUrl
+}
+
+// Staff found the payment in Goat Cliff's GCash / Maya: mark it confirmed.
+export async function confirmProof(admin, payment) {
+  must(await supabase.from('payments')
+    .update({ status: 'confirmed', paid_at: new Date().toISOString(), recorded_by: admin.id })
+    .eq('id', payment.id))
+  await syncPaid(payment.booking_id)
+}
+
+// The reference isn't in Goat Cliff's GCash / Maya (fake or wrong): mark the proof failed
+// and release the spot for other guests.
+export async function rejectProof(admin, payment) {
+  must(await supabase.from('payments').update({ status: 'failed', recorded_by: admin.id }).eq('id', payment.id))
+  must(await supabase.from('bookings').update({ payment_status: 'expired' }).eq('id', payment.booking_id))
 }
 
 // Frees the spot of a booking the guest never paid for (automatic hold expiry comes in Capstone 2).
@@ -248,6 +285,7 @@ function walkInRow(activity, { visit_date, nights, form, capacity_override, cons
     male_count: form.sexes.male, female_count: form.sexes.female,
     tents_for_4: camping ? form.tents4 || 0 : 0, tents_for_2: camping ? form.tents2 || 0 : 0,
     total_amount: price.total, amount_due: price.downPayment, amount_paid: 0,
+    discount_amount: price.discount,
     payment_status: 'pending', attendance_status: 'upcoming',
     source: form.channel || 'walk_in', capacity_override: !!capacity_override, hold_expires_at: null,
     consent_given_at, // created_by is filled in by the database
@@ -421,7 +459,8 @@ export async function dashboardSummary(admin) {
     todays,
     arrivingToday: todays.filter((b) => b.visit_date === today),
     peopleToday: todays.reduce((t, b) => t + b.group_size, 0),
-    awaiting: live.filter((b) => b.payment_status === 'pending' && b.source === 'online').length,
+    // unpaid online bookings that aren't still inside their 5-minute timer (proof sent, or older ones)
+    awaiting: live.filter((b) => b.payment_status === 'pending' && b.source === 'online' && b.hold_expires_at === null).length,
     rockCap: rock ? await capacityFor(admin, rock, today) : null,
     upcoming: live.filter((b) => b.visit_date > today && b.visit_date <= addDays(today, 7)),
     // Rock headcount for the next 14 days (the elevation profile on the Today page)
