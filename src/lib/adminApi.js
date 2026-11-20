@@ -234,6 +234,42 @@ export async function releaseUnpaid(admin, bookingId) {
   must(await supabase.from('bookings').update({ payment_status: 'expired' }).eq('id', bookingId))
 }
 
+// ---------- Goat Cliff's GCash / Maya details (Super Admin only) ----------
+
+// Both wallets (GCash, Maya), with the QR image's web address
+export async function listWallets() {
+  const rows = must(await supabase.from('payment_wallets').select('*').order('id'))
+  return rows.map((w) => ({
+    ...w,
+    qrUrl: w.qr_path ? supabase.storage.from('payment-qr').getPublicUrl(w.qr_path).data.publicUrl : null,
+  }))
+}
+
+// Save the name, number and on/off. A new QR image (a File) is uploaded first, under a new name.
+export async function saveWallet(admin, id, { account_name, account_number, is_active, qrFile }) {
+  if (!account_name.trim()) throw new Error('Enter the account name.')
+  if (!account_number.trim()) throw new Error('Enter the number.')
+
+  const fields = {
+    account_name: account_name.trim(),
+    account_number: account_number.trim(),
+    is_active,
+    updated_at: new Date().toISOString(),
+    updated_by: admin.id,
+  }
+
+  if (qrFile) {
+    const ext = (qrFile.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png'
+    const path = `${id}-${Date.now()}.${ext}`
+    must(await supabase.storage.from('payment-qr').upload(path, qrFile, { contentType: qrFile.type || 'image/png' }))
+    fields.qr_path = path
+  }
+
+  // .select() so I can tell if the save really happened (the access rules can block it quietly)
+  const saved = must(await supabase.from('payment_wallets').update(fields).eq('id', id).select())
+  if (saved.length === 0) throw new Error('Only the Super Admin can change the payment details.')
+}
+
 // ---------- attendance ----------
 
 // Done / Failed to show goes through mark_attendance (Field Staff may only do this).

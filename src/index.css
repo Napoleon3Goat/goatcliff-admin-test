@@ -393,3 +393,17 @@ a.ledger-row:hover strong { text-decoration: underline; text-underline-offset: 3
 
 /* Added Nov 20: Payment checks */
 .pay-ref { letter-spacing: 0.04em; }
+
+/* Added Nov 20: Payment details (GCash / Maya) */
+.wallet-list { display: grid; gap: 16px; }
+.wallet-form h2 { margin-top: 0; }
+.wallet-body { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; align-items: start; }
+.wallet-qr { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.wallet-qr img { width: 160px; height: 160px; object-fit: contain; background: #fff; border: 1.5px solid var(--line); border-radius: 10px; }
+.wallet-qr p { width: 160px; height: 160px; display: grid; place-items: center; margin: 0; border: 1.5px dashed var(--line); border-radius: 10px; }
+.file-pick { position: relative; cursor: pointer; }
+.file-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.check-line { flex-direction: row; align-items: center; gap: 10px; grid-column: 1 / -1; }
+.check-line input { width: 20px; height: 20px; min-height: 0; }
+@media (max-width: 560px) { .wallet-body { grid-template-columns: minmax(0, 1fr); } }
+.wallet-form .wide { grid-column: 1 / -1; }

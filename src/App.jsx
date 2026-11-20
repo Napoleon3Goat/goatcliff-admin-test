@@ -12,6 +12,7 @@ import Cancellations from './pages/Cancellations'
 import DateControls from './pages/DateControls'
 import Activities from './pages/Activities'
 import StaffAccounts from './pages/StaffAccounts'
+import PaymentDetails from './pages/PaymentDetails'
 import Analytics from './pages/Analytics'
 import MyGroups from './pages/MyGroups'
 import AdminLayout from './components/AdminLayout'
@@ -25,6 +26,7 @@ const PAGES = {
   '/cancellations': Cancellations,
   '/date-controls': DateControls,
   '/activities': Activities,
+  '/payment-details': PaymentDetails,
   '/staff': StaffAccounts,
   '/analytics': Analytics,
   '/my-groups': MyGroups,
