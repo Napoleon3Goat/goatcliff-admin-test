@@ -428,3 +428,41 @@ a.ledger-row:hover strong { text-decoration: underline; text-underline-offset: 3
 .request-actions select { width: auto; min-width: 170px; }
 .request-actions select, .request-actions button { height: 40px; min-height: 40px; }
 .request-actions .push-right { margin-left: auto; }
+
+/* Added Nov 21: monthly report PDF (Super Admin, Reports page) */
+.report-box { display: grid; gap: 10px; justify-items: start; }
+.report-box h2 { margin: 0; }
+.report-parts { display: flex; gap: 20px; flex-wrap: wrap; }
+.report-print { display: none; } /* only shown when printing */
+
+@media print {
+  @page { size: A4; margin: 18mm 16mm; }
+  body { background: #fff !important; }
+  body > #root { display: none !important; } /* hide the admin site, print only the report */
+  .report-print { display: block; font-family: 'Century Gothic', 'CenturyGothic', 'URW Gothic', sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.35; }
+  .report-print * { font-family: inherit; }
+  .rp-head { display: flex; align-items: center; gap: 14px; padding-bottom: 10px; border-bottom: 2px solid #1d3a2a; }
+  .rp-head img { width: 58px; height: 58px; }
+  .rp-org { flex: 1; }
+  .rp-org b { display: block; font-size: 13pt; }
+  .rp-org span, .rp-meta, .rp-note, .rp-cards span, .rp-foot { color: #555; }
+  .rp-title { text-align: right; }
+  .rp-title b { display: block; font-size: 16pt; color: #1d3a2a; }
+  .rp-meta { display: flex; justify-content: space-between; margin: 6px 0 4px; }
+  .report-print h2 { font-size: 13pt; color: #1d3a2a; margin: 12px 0 6px; padding-bottom: 3px; border-bottom: 1px solid #1d3a2a; }
+  .report-print h3 { font-size: 11pt; margin: 8px 0 3px; }
+  .report-print table { width: 100%; border-collapse: collapse; break-inside: avoid; }
+  .report-print th, .report-print td { padding: 2px 6px; text-align: left; border-bottom: 1px solid #ddd; font-size: 11pt; }
+  .report-print th { font-weight: bold; border-bottom: 1px solid #999; }
+  .report-print .n { text-align: right; white-space: nowrap; }
+  .report-print tr.total td { font-weight: bold; border-top: 1px solid #1a1a1a; border-bottom: none; }
+  .rp-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 4px; break-inside: avoid; }
+  .rp-cards div { border: 1px solid #bbb; padding: 6px 8px; }
+  .rp-cards span { display: block; }
+  .rp-cards b { font-size: 13pt; }
+  .rp-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .rp-note { margin: 4px 0 0; }
+  .rp-new-page { break-before: page; }
+  .rp-foot { margin-top: 24px; padding-top: 6px; border-top: 1px solid #999; display: flex; justify-content: space-between; gap: 24px; }
+  .rp-foot span:last-child { white-space: nowrap; }
+}

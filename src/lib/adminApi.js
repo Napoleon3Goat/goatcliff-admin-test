@@ -515,6 +515,115 @@ export async function dashboardSummary(admin) {
   }
 }
 
+// ---------- monthly report PDF (Super Admin) ----------
+// Everything the printable report needs for one month ('YYYY-MM').
+//  * Money: confirmed payments PAID in that month (Philippine time), refunds marked refunded,
+//    and the discounts (in pesos) on that month's bookings.
+//  * Bookings and guests: bookings whose visit date is in that month.
+//    Expired (never paid) bookings are left out; cancelled ones only count as "cancelled".
+export async function monthlyReport(month) {
+  const [y, m] = month.split('-').map(Number)
+  const from = `${month}-01`
+  const to = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)       // last day of the month
+  const next = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10)     // first day of next month
+  const start = `${from}T00:00:00+08:00`  // midnight in the Philippines
+  const end = `${next}T00:00:00+08:00`
+
+  const [acts, payments, refunds, bookings] = await Promise.all([
+    activityMap(),
+    supabase.from('payments').select('amount, method, booking:bookings(activity_id)')
+      .eq('status', 'confirmed').gte('paid_at', start).lt('paid_at', end).then(must),
+    supabase.from('cancellations').select('refund_amount')
+      .eq('action', 'refund').eq('refund_status', 'processed').gte('created_at', start).lt('created_at', end).then(must),
+    supabase.from('bookings').select('*').gte('visit_date', from).lte('visit_date', to).neq('payment_status', 'expired').then(must),
+  ])
+
+  // Camping areas are added up together; other activities by name
+  const groupName = (activityId) => {
+    const a = acts[activityId]
+    if (!a) return 'Other'
+    return isCamping(a) ? 'Camping (all areas)' : a.name
+  }
+  const add = (list, key, amount) => {
+    const row = list.find((r) => r.key === key)
+    if (row) { row.count += 1; row.amount += amount } else list.push({ key, count: 1, amount })
+  }
+
+  // ----- Money -----
+  const byMethod = []
+  const byActivity = []
+  let income = 0
+  for (const p of payments) {
+    const amount = Number(p.amount)
+    income += amount
+    add(byMethod, p.method, amount)
+    add(byActivity, groupName(p.booking?.activity_id), amount)
+  }
+  const refunded = refunds.reduce((t, r) => t + Number(r.refund_amount || 0), 0)
+
+  // ----- Bookings -----
+  const live = bookings.filter((b) => b.attendance_status !== 'cancelled')   // cancelled = not counted as guests
+  const guests = live.reduce((t, b) => t + b.group_size, 0)
+  const activityRows = []
+  const sourceRows = []
+  for (const b of live) {
+    add(activityRows, groupName(b.activity_id), b.group_size)
+    add(sourceRows, b.source, b.group_size)
+  }
+
+  // ----- Discounts (one discount per person, never two) -----
+  //  organizer booking -> the whole group; rock / viewing group of 6+ -> the whole group;
+  //  otherwise -> the seniors, PWDs, Atok locals and children counted on the booking.
+  const tally = { seniors: 0, pwds: 0, locals: 0, children: 0, organizer: 0, organizerBookings: 0, group6: 0, group6Bookings: 0 }
+  let discountPesos = 0
+  for (const b of live) {
+    discountPesos += Number(b.discount_amount || 0)
+    const camping = isCamping(acts[b.activity_id] || {})
+    if (b.is_organizer) { tally.organizer += b.group_size; tally.organizerBookings += 1 }
+    else if (!camping && b.group_size >= 6) { tally.group6 += b.group_size; tally.group6Bookings += 1 }
+    else {
+      tally.seniors += b.senior_count
+      tally.pwds += b.pwd_count
+      tally.locals += b.local_count
+      tally.children += b.child_count
+    }
+  }
+
+  // ----- Guests -----
+  const count = (key) => {
+    const rows = []
+    for (const b of live) add(rows, key(b), b.group_size)
+    return rows.sort((a, b) => b.amount - a.amount)
+  }
+  const provinces = count((b) => b.province || 'Not given')
+  const foundUs = count((b) => b.found_us || 'not_given')
+  const ages = AGE_COLS.map((col, i) => ({ key: AGE_GROUPS[i], amount: live.reduce((t, b) => t + Number(b[col] || 0), 0) }))
+
+  return {
+    month, from, to,
+    money: {
+      income, refunded, net: income - refunded, discountPesos,
+      byMethod: byMethod.sort((a, b) => b.amount - a.amount),
+      byActivity: byActivity.sort((a, b) => b.amount - a.amount),
+      tally,
+    },
+    bookings: {
+      total: bookings.length,
+      guests,
+      cancelled: bookings.filter((b) => b.attendance_status === 'cancelled').length,
+      failed: bookings.filter((b) => b.attendance_status === 'failed_to_show').length,
+      byActivity: activityRows.sort((a, b) => b.amount - a.amount),
+      bySource: sourceRows.sort((a, b) => b.count - a.count),
+    },
+    guests: {
+      total: guests,
+      provinces, foundUs, ages,
+      male: live.reduce((t, b) => t + b.male_count, 0),
+      female: live.reduce((t, b) => t + b.female_count, 0),
+    },
+  }
+}
+
 // ---------- monthly report (FR-29) ----------
 // Totals come from the report_monthly_* views; bookings per day is counted from the bookings table.
 

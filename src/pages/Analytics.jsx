@@ -1,5 +1,8 @@
-import { useState } from 'react'
-import { analytics } from '../lib/adminApi'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { analytics, monthlyReport } from '../lib/adminApi'
+import { friendlyError } from '../lib/errors'
+import MonthlyReport from '../components/MonthlyReport'
 import { pesoShort, todayManila } from '../lib/dates'
 import { Loading, ErrorState, PageHeader, useLoad } from '../components/ui'
 
@@ -19,6 +22,39 @@ export default function Analytics({ admin }) {
   const [month, setMonth] = useState(options[0])
   const { data, error, loading, reload } = useLoad(() => analytics(admin, { month }), [month])
 
+  // Monthly report PDF (Super Admin only): pick the parts, then the print window opens ("Save as PDF")
+  const [include, setInclude] = useState({ money: true, bookings: true, guests: true })
+  const [report, setReport] = useState(null) // the report being printed
+  const [making, setMaking] = useState(false)
+  const [reportError, setReportError] = useState('')
+
+  async function downloadReport() {
+    if (!include.money && !include.bookings && !include.guests) return setReportError('Tick at least one part.')
+    setMaking(true)
+    setReportError('')
+    try {
+      setReport(await monthlyReport(month))
+    } catch (e) {
+      setReportError(friendlyError(e))
+    } finally {
+      setMaking(false)
+    }
+  }
+
+  // When the report is on the page: open the print window, then remove it when printing is done.
+  // (The page title becomes the PDF's file name.)
+  useEffect(() => {
+    if (!report) return
+    const oldTitle = document.title
+    document.title = `Goat Cliff Monthly Report ${report.month}`
+    const finished = () => { document.title = oldTitle; setReport(null) }
+    window.addEventListener('afterprint', finished)
+    const timer = setTimeout(() => window.print(), 300) // a moment for the logo to load
+    return () => { clearTimeout(timer); window.removeEventListener('afterprint', finished); document.title = oldTitle }
+  }, [report])
+
+  const tick = (part) => (e) => setInclude({ ...include, [part]: e.target.checked })
+
   return (
     <div>
       <PageHeader title="Reports">
@@ -26,6 +62,21 @@ export default function Analytics({ admin }) {
           {options.map((m) => <option key={m} value={m}>{monthName(m)}</option>)}
         </select>
       </PageHeader>
+      {admin.role === 'super_admin' && (
+        <section className="panel report-box">
+          <h2>Monthly report (PDF)</h2>
+          <p className="muted">For {monthName(month)}. Choose what goes in it, then "Save as PDF" in the print window.</p>
+          <div className="report-parts">
+            <label className="check-line"><input type="checkbox" checked={include.money} onChange={tick('money')} /> Money and discounts</label>
+            <label className="check-line"><input type="checkbox" checked={include.bookings} onChange={tick('bookings')} /> Bookings</label>
+            <label className="check-line"><input type="checkbox" checked={include.guests} onChange={tick('guests')} /> Guests</label>
+          </div>
+          {reportError && <p className="error" role="alert">{reportError}</p>}
+          <button className="btn-primary" onClick={downloadReport} disabled={making}>{making ? 'Preparing…' : 'Download PDF'}</button>
+        </section>
+      )}
+      {report && createPortal(<MonthlyReport data={report} show={include} preparedBy={admin.name} />, document.body)}
+
       {error && <ErrorState message={error} onRetry={reload} />}
       {loading && <Loading />}
       {data && (
