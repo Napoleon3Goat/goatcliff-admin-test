@@ -15,7 +15,7 @@ const must = ({ data, error }) => { if (error) throw error; return data }
 export const AGE_GROUPS = ['0–7', '8–17', '18–24', '25–34', '35–44', '45–59', '60+']
 const AGE_COLS = ['age_0_7', 'age_8_17', 'age_18_24', 'age_25_34', 'age_35_44', 'age_45_59', 'age_60_up']
 export const FOUND_US = { tiktok: 'TikTok', facebook: 'Facebook', friends_family: 'Friends or family', google: 'Google', other: 'Other' }
-export const REFUND_METHODS = { gcash: 'GCash', cash: 'Cash', bank: 'Bank transfer' }
+export const REFUND_METHODS = { gcash: 'GCash', maya: 'Maya', cash: 'Cash', bank: 'Bank transfer' }
 export const CHANNELS = { online: 'Online', walk_in: 'Walk-in', messenger: 'Messenger', phone: 'Phone' }
 export const REASONS = {
   weather: 'Bad weather',

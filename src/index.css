@@ -420,3 +420,11 @@ a.ledger-row:hover strong { text-decoration: underline; text-underline-offset: 3
 .province-list button { width: 100%; min-height: 40px; justify-content: flex-start; background: none; border: none; border-radius: 7px; padding: 8px 12px; color: var(--ink); font-weight: 400; }
 .province-list button:hover, .province-list button:focus-visible { background: var(--ground); }
 .province-list button[aria-selected="true"] { font-weight: 700; }
+
+/* Added Nov 21: Requests actions on one row (refund on the left, "customer updated" on the right) */
+.request-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.request-actions:empty { display: none; }
+.request-actions .refund-sent { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.request-actions select { width: auto; min-width: 170px; }
+.request-actions select, .request-actions button { height: 40px; min-height: 40px; }
+.request-actions .push-right { margin-left: auto; }

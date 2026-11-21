@@ -271,7 +271,6 @@ function ChangeBooking({ admin, booking, onDone }) {
   return (
     <section className="card">
       <h2>Reschedule, refund or cancel</h2>
-      <p className="hint">Until Dec 31, {booking.visit_date.slice(0, 4)}. (Guests online need 2 days' notice; staff don't.)</p>
       {!action && (
         <div className="actions-row wrap">
           <button className="btn-quiet" onClick={() => start('reschedule')}>Reschedule</button>
