@@ -430,9 +430,11 @@ a.ledger-row:hover strong { text-decoration: underline; text-underline-offset: 3
 .request-actions .push-right { margin-left: auto; }
 
 /* Added Nov 21: monthly report PDF (Super Admin, Reports page) */
-.report-box { display: grid; gap: 10px; justify-items: start; }
-.report-box h2 { margin: 0; }
-.report-parts { display: flex; gap: 20px; flex-wrap: wrap; }
+.report-menu { position: relative; }
+.report-menu summary { list-style: none; }
+.report-menu summary::-webkit-details-marker { display: none; }
+.report-drop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 240px; display: grid; gap: 10px; padding: 14px; background: var(--white); border: 1.5px solid var(--line); border-radius: 10px; box-shadow: 0 6px 18px rgba(20, 36, 27, 0.15); }
+.report-drop .error { margin: 0; }
 .report-print { display: none; } /* only shown when printing */
 
 @media print {
@@ -445,7 +447,7 @@ a.ledger-row:hover strong { text-decoration: underline; text-underline-offset: 3
   .rp-head img { width: 58px; height: 58px; }
   .rp-org { flex: 1; }
   .rp-org b { display: block; font-size: 13pt; }
-  .rp-org span, .rp-meta, .rp-note, .rp-cards span, .rp-foot { color: #555; }
+  .rp-org span, .rp-meta, .rp-cards span, .rp-foot { color: #555; }
   .rp-title { text-align: right; }
   .rp-title b { display: block; font-size: 16pt; color: #1d3a2a; }
   .rp-meta { display: flex; justify-content: space-between; margin: 6px 0 4px; }
@@ -461,7 +463,6 @@ a.ledger-row:hover strong { text-decoration: underline; text-underline-offset: 3
   .rp-cards span { display: block; }
   .rp-cards b { font-size: 13pt; }
   .rp-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .rp-note { margin: 4px 0 0; }
   .rp-new-page { break-before: page; }
   .rp-foot { margin-top: 24px; padding-top: 6px; border-top: 1px solid #999; display: flex; justify-content: space-between; gap: 24px; }
   .rp-foot span:last-child { white-space: nowrap; }

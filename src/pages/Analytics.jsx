@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { analytics, monthlyReport } from '../lib/adminApi'
 import { friendlyError } from '../lib/errors'
@@ -27,6 +27,7 @@ export default function Analytics({ admin }) {
   const [report, setReport] = useState(null) // the report being printed
   const [making, setMaking] = useState(false)
   const [reportError, setReportError] = useState('')
+  const menu = useRef(null) // the Download PDF dropdown
 
   async function downloadReport() {
     if (!include.money && !include.bookings && !include.guests) return setReportError('Tick at least one part.')
@@ -34,6 +35,7 @@ export default function Analytics({ admin }) {
     setReportError('')
     try {
       setReport(await monthlyReport(month))
+      menu.current.open = false // close the dropdown
     } catch (e) {
       setReportError(friendlyError(e))
     } finally {
@@ -61,20 +63,19 @@ export default function Analytics({ admin }) {
         <select id="analytics-month" value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month">
           {options.map((m) => <option key={m} value={m}>{monthName(m)}</option>)}
         </select>
+        {admin.role === 'super_admin' && (
+          <details className="report-menu" ref={menu}>
+            <summary className="btn-quiet">Download PDF ▾</summary>
+            <div className="report-drop">
+              <label className="check"><input type="checkbox" checked={include.money} onChange={tick('money')} /> Money and discounts</label>
+              <label className="check"><input type="checkbox" checked={include.bookings} onChange={tick('bookings')} /> Bookings</label>
+              <label className="check"><input type="checkbox" checked={include.guests} onChange={tick('guests')} /> Guests</label>
+              {reportError && <p className="error" role="alert">{reportError}</p>}
+              <button className="btn-primary small" onClick={downloadReport} disabled={making}>{making ? 'Preparing…' : 'Download'}</button>
+            </div>
+          </details>
+        )}
       </PageHeader>
-      {admin.role === 'super_admin' && (
-        <section className="panel report-box">
-          <h2>Monthly report (PDF)</h2>
-          <p className="muted">For {monthName(month)}. Choose what goes in it, then "Save as PDF" in the print window.</p>
-          <div className="report-parts">
-            <label className="check-line"><input type="checkbox" checked={include.money} onChange={tick('money')} /> Money and discounts</label>
-            <label className="check-line"><input type="checkbox" checked={include.bookings} onChange={tick('bookings')} /> Bookings</label>
-            <label className="check-line"><input type="checkbox" checked={include.guests} onChange={tick('guests')} /> Guests</label>
-          </div>
-          {reportError && <p className="error" role="alert">{reportError}</p>}
-          <button className="btn-primary" onClick={downloadReport} disabled={making}>{making ? 'Preparing…' : 'Download PDF'}</button>
-        </section>
-      )}
       {report && createPortal(<MonthlyReport data={report} show={include} preparedBy={admin.name} />, document.body)}
 
       {error && <ErrorState message={error} onRetry={reload} />}

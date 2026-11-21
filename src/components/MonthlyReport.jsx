@@ -40,7 +40,6 @@ export default function MonthlyReport({ data, show, preparedBy }) {
             <div><span>Net</span><b>{peso(money.net)}</b></div>
             <div><span>Discounts given</span><b>{peso(money.discountPesos)}</b></div>
           </div>
-          <p className="rp-note">Income = confirmed payments received this month. Net = income minus refunds paid.</p>
 
           <div className="rp-two">
             <div>
@@ -91,7 +90,6 @@ export default function MonthlyReport({ data, show, preparedBy }) {
             <div><span>Cancelled</span><b>{bookings.cancelled}</b></div>
             <div><span>Failed to show</span><b>{bookings.failed}</b></div>
           </div>
-          <p className="rp-note">Bookings = every booking with a visit date this month, cancelled ones included. The guest counts and the tables below leave out cancelled bookings.</p>
           <div className="rp-two">
             <div>
               <h3>By activity</h3>
