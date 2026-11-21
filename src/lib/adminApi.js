@@ -59,6 +59,8 @@ async function staffNames() {
   return Object.fromEntries((data || []).map((s) => [s.id, s.name]))
 }
 const nameOf = (names, id) => (id ? names[id] || 'Staff' : '—')
+// Who made a reschedule / refund / cancellation: a staff member, or the guest online (no staff member)
+const changedBy = (names, id) => (id ? nameOf(names, id) : 'Guest (online)')
 
 // Photo picked in Areas & prices (a shrunk JPEG as a data URL) -> uploaded to the public bucket.
 async function uploadActivityPhoto(code, dataUrl) {
@@ -136,7 +138,7 @@ export async function getBooking(admin, id) {
     created_by_name: b.created_by ? nameOf(names, b.created_by) : null,
     id_photos: await listIdPhotos(b.reference_number),
     payments: payments.map((p) => ({ ...p, recorded_by_name: p.recorded_by ? nameOf(names, p.recorded_by) : 'Guest (online)' })),
-    cancellations: cancellations.map((c) => ({ ...c, processed_by_name: nameOf(names, c.processed_by) })),
+    cancellations: cancellations.map((c) => ({ ...c, processed_by_name: changedBy(names, c.processed_by) })),
   }
 }
 
@@ -347,16 +349,16 @@ export async function createWalkIn(admin, { activity, visit_date, nights, form, 
 
 export async function processCancellation(admin, bookingId, { action, reason_category, reason_details, new_visit_date, refund_amount, refund_method }) {
   const b = must(await supabase.from('bookings').select('visit_date').eq('id', bookingId).single())
-  // FR-26: until Dec 31 of the visit's year, at least 2 days before the visit.
+  // FR-26: until Dec 31 of the visit's year.
+  // (Guests online need 2 days' notice; staff don't, so they can still handle late changes and no-shows.)
   const today = todayManila()
   const yearEnd = b.visit_date.slice(0, 4) + '-12-31'
-  if (b.visit_date >= today && b.visit_date < addDays(today, 2)) throw new Error('Changes must be made at least 2 days before the visit.')
   if (today > yearEnd) throw new Error(`Changes for ${b.visit_date.slice(0, 4)} visits closed on Dec 31.`)
   if (!reason_category) throw new Error('Choose a reason.')
   if (action === 'reschedule') {
     if (!new_visit_date) throw new Error('Pick the new date.')
     if (new_visit_date > yearEnd) throw new Error(`The new date must be on or before Dec 31, ${b.visit_date.slice(0, 4)}.`)
-    if (new_visit_date < addDays(today, 2)) throw new Error('The new date must be at least 2 days from today.')
+    if (new_visit_date < today) throw new Error('The new date can\'t be in the past.')
   }
   if (action === 'refund' && !(refund_amount > 0)) throw new Error('Enter the refund amount.')
 
@@ -380,7 +382,7 @@ export async function listCancellations(admin) {
     activityMap(),
     staffNames(),
   ])
-  return rows.map((c) => ({ ...c, booking: c.booking || {}, activity: acts[c.booking?.activity_id], processed_by_name: nameOf(names, c.processed_by) }))
+  return rows.map((c) => ({ ...c, booking: c.booking || {}, activity: acts[c.booking?.activity_id], processed_by_name: changedBy(names, c.processed_by) }))
 }
 
 // The database refuses a processed refund without a method (processed_refund_needs_method).

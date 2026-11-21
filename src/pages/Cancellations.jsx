@@ -5,9 +5,11 @@ import { formatDate, peso } from '../lib/dates'
 import { friendlyError } from '../lib/errors'
 import { Loading, ErrorState, Empty, PageHeader, activityLabel, useLoad } from '../components/ui'
 
-const ACTIONS = { reschedule: ['Rescheduled', 'badge-info'], refund: ['Refunded', 'badge-wait'], cancel: ['Cancelled', 'badge-bad'] }
+const ACTIONS = { reschedule: ['Rescheduled', 'badge-info'], refund: ['Cancelled with refund', 'badge-wait'], cancel: ['Cancelled', 'badge-bad'] }
 
-// History of every reschedule, refund and cancellation. New ones start from a booking's page.
+// History of every reschedule, refund and cancellation. Staff start one from a booking's page;
+// guests can also reschedule or cancel online ("by Guest (online)"). A guest's cancellation
+// with money paid shows up in "To do" until the refund is sent.
 export default function Cancellations({ admin }) {
   const [filter, setFilter] = useState('')
   const { data, error, loading, reload } = useLoad(() => listCancellations(admin), [])
@@ -59,17 +61,17 @@ function Row({ admin, c, onDone }) {
       <dl className="facts compact">
         <dt>Reason</dt><dd>{REASONS[c.reason_category]}{c.reason_details ? ` · ${c.reason_details}` : ''}</dd>
         <dt>Date</dt><dd>{c.action === 'reschedule' ? `${formatDate(c.original_visit_date)} → ${formatDate(c.new_visit_date)}` : formatDate(c.original_visit_date)}</dd>
-        {c.action === 'refund' && <><dt>Refund</dt><dd>{peso(c.refund_amount)}{c.refund_method ? ` by ${c.refund_method}` : ''} · {c.refund_status === 'processed' ? 'Sent' : 'Not sent yet'}</dd></>}
-        <dt>Customer updated</dt><dd>{c.guest_notified_at ? new Date(c.guest_notified_at).toLocaleDateString('en-PH', { dateStyle: 'medium' }) : 'Not yet'}</dd>
+        {c.action === 'refund' && <><dt>Refund</dt><dd>{peso(c.refund_amount)}{c.refund_method ? ` by ${c.refund_method}` : ''} · {c.refund_status === 'processed' ? 'Refunded' : 'Not refunded yet'}</dd></>}
+        <dt>Customer updated</dt><dd>{!c.processed_by && c.action !== 'refund' ? 'Done by the guest online' : c.guest_notified_at ? new Date(c.guest_notified_at).toLocaleDateString('en-PH', { dateStyle: 'medium' }) : 'Not yet'}</dd>
       </dl>
       <div className="actions-row wrap">
         {c.action === 'refund' && c.refund_status === 'pending' && (
           <span className="refund-sent">
-            <select id={`refund-method-${c.id}`} value={method} onChange={(e) => setMethod(e.target.value)} aria-label="Refund sent by">
-              <option value="">Sent by…</option>
+            <select id={`refund-method-${c.id}`} value={method} onChange={(e) => setMethod(e.target.value)} aria-label="Refunded by">
+              <option value="">Refunded by…</option>
               {Object.entries(REFUND_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
-            <button className="btn-quiet small" disabled={!method} onClick={() => run(() => markRefundProcessed(admin, c.id, method))}>Mark refund as sent</button>
+            <button className="btn-quiet small" disabled={!method} onClick={() => run(() => markRefundProcessed(admin, c.id, method))}>Mark as refunded</button>
           </span>
         )}
         {!c.guest_notified_at && (

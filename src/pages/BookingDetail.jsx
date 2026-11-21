@@ -271,7 +271,7 @@ function ChangeBooking({ admin, booking, onDone }) {
   return (
     <section className="card">
       <h2>Reschedule, refund or cancel</h2>
-      <p className="hint">At least 2 days before the visit, until Dec 31, {booking.visit_date.slice(0, 4)}.</p>
+      <p className="hint">Until Dec 31, {booking.visit_date.slice(0, 4)}. (Guests online need 2 days' notice; staff don't.)</p>
       {!action && (
         <div className="actions-row wrap">
           <button className="btn-quiet" onClick={() => start('reschedule')}>Reschedule</button>
@@ -291,7 +291,7 @@ function ChangeBooking({ admin, booking, onDone }) {
             </label>
             {action === 'reschedule' && (
               <label>New date
-                <input id="change-date" type="date" value={newDate} min={addDays(todayManila(), 2)} max={maxDate} onChange={(e) => setNewDate(e.target.value)} required />
+                <input id="change-date" type="date" value={newDate} min={todayManila()} max={maxDate} onChange={(e) => setNewDate(e.target.value)} required />
               </label>
             )}
             {action === 'refund' && (
